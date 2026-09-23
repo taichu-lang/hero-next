@@ -4,21 +4,25 @@
   "version": "0.1.0",
   "private": true,
   "exports": {
-    "./layout": "./core/layout/index.ts"
+    "./layout": "./core/layout/index.ts",
+    "./theme": "./core/theme/index.ts",
+    "./base.css": "./core/styles/base.css"
   },
   "peerDependencies": {
     "@heroui/react": "^3.2.6",
     "@heroui/styles": "^3.2.6",
     "next": "^16.3.5",
+    "next-themes": "^0.4.6",
     "react": ">=19",
     "react-dom": ">=19"
   },
   "devDependencies": {
-    "@heroui/react": "^3.2.6",
-    "@heroui/styles": "^3.2.6",
-    "next": "^16.3.5",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "next-themes": "catalog:",
+    "@heroui/react": "catalog:",
+    "@heroui/styles": "catalog:",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "@eslint/compat": "1.2.8",
     "@eslint/eslintrc": "3.3.1",
     "@eslint/js": "9.25.1",

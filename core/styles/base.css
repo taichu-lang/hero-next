@@ -1,0 +1,19 @@
+.light,
+[data-theme="light"] {
+  --accent: oklch(0.6016 0.07 211.92);
+  --accent-foreground: oklch(0.9454 0.1444 102.84);
+}
+
+.dark,
+[data-theme="dark"] {
+  --accent: oklch(0.3719 0.0166 251.78);
+  --accent-foreground: oklch(0.7309 0.1146 84.99);
+  --focus: oklch(0.9347 0.0128 86.83);
+  --border: color-mix(in oklab, var(--focus) 70%, transparent);
+  /* foreground of secondary */
+  --accent-soft-foreground: oklch(0.9821 0 0);
+
+  --background: oklch(0.235 0 0);
+  /* background of secondary */
+  --default: oklch(0.9821 0 0 / 8%);
+}
