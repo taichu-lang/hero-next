@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "private": true,
   "exports": {
+    "./chat": "./core/chat/index.ts",
     "./layout": "./core/layout/index.ts",
     "./theme": "./core/theme/index.ts",
     "./base.css": "./core/styles/base.css"

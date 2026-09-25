@@ -1,7 +1,11 @@
+:root,
 .light,
 [data-theme="light"] {
   --accent: oklch(0.6016 0.07 211.92);
   --accent-foreground: oklch(0.9454 0.1444 102.84);
+
+  --danger-soft: oklch(0.8715 0.0685 25.22);
+  --danger-soft-foreground: oklch(0.3563 0.1447 25.69);
 }
 
 .dark,
@@ -15,5 +19,9 @@
 
   --background: oklch(0.235 0 0);
   /* background of secondary */
-  --default: oklch(0.9821 0 0 / 8%);
+  --default: oklch(0.3492 0.0034 286.22);
+
+  --warning-soft: oklch(0.7936 0.1546 90.09 / 23.9%);
+  --danger-soft: oklch(0.7848 0.1249 25.04 / 23.9%);
+  --danger-soft-foreground: oklch(0.8269 0.0963 24.82);
 }

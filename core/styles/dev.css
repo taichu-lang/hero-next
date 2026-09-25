@@ -1,0 +1,11 @@
+/**
+ * Editor-only Tailwind entry point.
+ *
+ * hero-next itself never imports Tailwind (consumers own that via
+ * `@import "hero-next/base.css"` in their own globals.css), so nothing here
+ * builds against this file. It exists solely so the Tailwind CSS
+ * IntelliSense extension has a `@import "tailwindcss"` anchor to resolve
+ * the v4 design system from when this package is opened on its own.
+ */
+@import "tailwindcss";
+@import "@heroui/styles";

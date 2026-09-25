@@ -1,9 +1,13 @@
 {
-  "tailwindCSS.classAttributes": ["class", "className", "ngClass"],
+  "tailwindCSS.experimental.configFile": {
+    "core/styles/dev.css": ["core/**"]
+  },
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+  "tailwindCSS.classAttributes": ["class", "className"],
   "tailwindCSS.experimental.classRegex": [
     ["clsx\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
-    ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
-    ["cx\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
     ["tv\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
   ]
 }
