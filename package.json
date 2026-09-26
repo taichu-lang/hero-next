@@ -7,6 +7,8 @@
     "./chat": "./core/chat/index.ts",
     "./layout": "./core/layout/index.ts",
     "./theme": "./core/theme/index.ts",
+    "./i18n/*": "./i18n/*.ts",
+    "./blocks/chat": "./blocks/chat/index.ts",
     "./base.css": "./core/styles/base.css"
   },
   "peerDependencies": {
@@ -15,15 +17,18 @@
     "next": "^16.3.5",
     "next-themes": "^0.4.6",
     "react": ">=19",
-    "react-dom": ">=19"
+    "react-dom": ">=19",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "next-themes": "catalog:",
+    "next-intl": "catalog:",
     "@heroui/react": "catalog:",
     "@heroui/styles": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "zustand": "catalog:",
     "@eslint/compat": "1.2.8",
     "@eslint/eslintrc": "3.3.1",
     "@eslint/js": "9.25.1",
@@ -53,6 +58,8 @@
     "typescript": "5.6.3"
   },
   "dependencies": {
-    "lucide-react": "^1.47.0"
+    "@tanstack/react-virtual": "^3.14.13",
+    "lucide-react": "^1.47.0",
+    "streamdown": "2.6.0"
   }
 }

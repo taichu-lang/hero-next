@@ -4,6 +4,9 @@ export {
   ChatMessageBubble,
   ChatMessageMetadata,
 } from "./ChatMessage";
-export { ChatMessageContextProvider } from "./ChatMessageContext";
+export {
+  ChatMessageContextProvider,
+  useChatMessageContext,
+} from "./ChatMessageContext";
 export { ChatMessageList } from "./ChatMessageList";
-export { ModelSelector } from "./Model";
+export { type Message } from "./type";
