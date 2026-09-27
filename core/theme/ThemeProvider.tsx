@@ -13,7 +13,9 @@ export interface ProvidersProps {
 export function ThemeProvider({ children, locale, theme }: ProvidersProps) {
   return (
     <I18nProvider locale={locale}>
-      <NextThemesProvider {...theme}>{children}</NextThemesProvider>
+      <NextThemesProvider {...theme} attribute={"class"}>
+        {children}
+      </NextThemesProvider>
     </I18nProvider>
   );
 }

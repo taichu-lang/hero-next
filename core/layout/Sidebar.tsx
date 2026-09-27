@@ -1,7 +1,5 @@
 "use client";
 
-import type { AnchorHTMLAttributes, DetailedHTMLProps, ReactNode } from "react";
-
 import {
   Button,
   Drawer,
@@ -13,8 +11,10 @@ import {
 import clsx from "clsx";
 import { PanelLeftCloseIcon } from "lucide-react";
 import NextLink from "next/link";
+import type { AnchorHTMLAttributes, DetailedHTMLProps, ReactNode } from "react";
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -88,10 +88,13 @@ export function Sidebar({
   const [internalCollapsed, setInternalCollapsed] = useState(defaultCollapsed);
   const isCollapsed = isControlled ? isCollapsedProp : internalCollapsed;
 
-  const setCollapsed = (value: boolean) => {
-    if (!isControlled) setInternalCollapsed(value);
-    onCollapsedChange?.(value);
-  };
+  const setCollapsed = useCallback(
+    (value: boolean) => {
+      if (!isControlled) setInternalCollapsed(value);
+      onCollapsedChange?.(value);
+    },
+    [isControlled, onCollapsedChange],
+  );
 
   const previousRangeRef = useRef<boolean | null>(null);
 
@@ -100,7 +103,7 @@ export function Sidebar({
     if (previousRangeRef.current === isBelowCollapseBreakpoint) return;
     previousRangeRef.current = isBelowCollapseBreakpoint;
     setCollapsed(isBelowCollapseBreakpoint);
-  }, [isBelowCollapseBreakpoint, isMobile, isControlled]);
+  }, [isBelowCollapseBreakpoint, isMobile, isControlled, setCollapsed]);
 
   const mobileState = useOverlayState();
 
@@ -113,7 +116,7 @@ export function Sidebar({
       closeMobile: mobileState.close,
       toggleMobile: mobileState.toggle,
     }),
-    [isMobile, isCollapsed, mobileState.isOpen],
+    [isMobile, isCollapsed, mobileState, setCollapsed],
   );
 
   if (isMobile) {
@@ -166,7 +169,7 @@ Sidebar.Header = function SidebarHeader({
   return (
     <div
       className={clsx(
-        "border-default flex h-14 shrink-0 items-center gap-2 border-b px-3",
+        "border-default flex h-14 shrink-0 items-center gap-2 px-3",
         className,
       )}
     >
@@ -202,7 +205,7 @@ Sidebar.Footer = function SidebarFooter({
   return (
     <div
       className={clsx(
-        "border-default mt-auto flex shrink-0 items-center gap-2 border-t px-3 py-3",
+        "border-default mt-auto flex shrink-0 items-center gap-2 border-t p-1.5",
         className,
       )}
     >
