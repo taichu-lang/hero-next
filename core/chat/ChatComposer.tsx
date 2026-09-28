@@ -7,6 +7,7 @@ import { useRef, useState } from "react";
 import {
   ChatComposerInput,
   ChatComposerInputHandler,
+  ChatComposerInputProps,
 } from "./ChatComposerInput";
 
 interface ComposerStatus {
@@ -43,6 +44,8 @@ export interface ChatComposerProps {
   streaming?: boolean;
 
   status?: ComposerStatus;
+
+  input?: Omit<ChatComposerInputProps, "onChange" | "ref">;
 
   onSubmit: (value: string) => void;
 }
@@ -92,6 +95,7 @@ export function ChatComposer({
   footActions,
   status,
   disabled = false,
+  input,
   onSubmit,
 }: ChatComposerProps) {
   const [text, setText] = useState<string>("");
@@ -104,25 +108,24 @@ export function ChatComposer({
 
   return (
     <div
-      className={clsx("ring-default flex w-full flex-col ring-1", radius, {})}
+      className={clsx(
+        "bg-background-secondary flex w-full flex-col shadow-inner",
+        radius,
+      )}
     >
       {drawer && <ChatComposerDrawer>{drawer}</ChatComposerDrawer>}
       <div
-        className={clsx(
-          "ring-default bg-background z-2 flex flex-1 flex-col gap-2 p-3 ring-1",
-          radius,
-          {
-            "outline-segment shadow-lg hover:outline": elevation === "low",
-            "shadow-none": elevation === "none",
-          },
-        )}
+        className={clsx("flex flex-1 flex-col gap-2 p-3", radius, {
+          "hover:outline-segment hover:outline": elevation === "low",
+          "shadow-none": elevation === "none",
+        })}
       >
         <div className="flex min-h-0 items-center">
           {headerActions}
           <div className="flex-1" />
           {headerContext}
         </div>
-        <ChatComposerInput onChange={setText} ref={inputRef} />
+        <ChatComposerInput onChange={setText} ref={inputRef} {...input} />
         <div className="flex min-h-0 items-center">
           {footActions}
           <div className="flex-1" />

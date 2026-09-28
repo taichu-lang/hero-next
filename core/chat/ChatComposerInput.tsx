@@ -13,14 +13,16 @@ export interface ChatComposerInputProps {
   maxRows?: number;
   placeholder?: string;
   ref?: React.Ref<ChatComposerInputHandler>;
+  className?: string;
   onChange: (value: string) => void;
 }
 
 export function ChatComposerInput({
   disabled,
-  maxRows = 4,
+  maxRows = 2,
   placeholder,
   ref,
+  className,
   onChange,
 }: ChatComposerInputProps) {
   const [value, setValue] = useState<string>("");
@@ -52,6 +54,7 @@ export function ChatComposerInput({
         "scrollbar-thin resize-none",
         "bg-transparent shadow-none outline-none",
         "data-[focused=true]:bg-transparent data-[focused=true]:shadow-none data-[focused=true]:ring-0 data-[focused=true]:outline-none",
+        className,
       )}
       autoFocus={false}
     />

@@ -8,5 +8,9 @@ export {
   ChatMessageContextProvider,
   useChatMessageContext,
 } from "./ChatMessageContext";
-export { ChatMessageList } from "./ChatMessageList";
-export { type Message } from "./type";
+export {
+  type Message,
+  type ResponseChunk,
+  type ResponseChunkType,
+  type TextContent,
+} from "./type";

@@ -25,3 +25,24 @@
   --danger-soft: oklch(0.7848 0.1249 25.04 / 23.9%);
   --danger-soft-foreground: oklch(0.8269 0.0963 24.82);
 }
+
+@layer components {
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--mui-palette-action-hover);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--mui-palette-divider);
+  }
+}
