@@ -1,3 +1,7 @@
 export { useChatContext } from "./ChatContext";
-export { ChatMessageList, ChatScrollArea } from "./ChatMessageList";
+export {
+  ChatMessageList,
+  ChatScrollArea,
+  type ChatMessageListHandler,
+} from "./ChatMessageList";
 export { ModelSelector } from "./Model";

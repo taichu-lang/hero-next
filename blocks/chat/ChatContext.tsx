@@ -23,7 +23,10 @@ export interface ChatContextValue {
    */
   streamingMessage: Message | null;
 
-  addUserMessage: (message: Message) => void;
+  /**
+   * @returns The index of the message in the messages array.
+   */
+  addUserMessage: (message: Message, assistant_id: string) => number;
 
   onStream: (messageID: string, chunk: string) => void;
 
@@ -58,20 +61,24 @@ const createChatStore = (scroll: HTMLDivElement | null) =>
     messages: [],
     streamingMessage: null,
 
-    addUserMessage: (message: Message) => {
+    addUserMessage: (message: Message, assistant_id: string): number => {
       if (get().status !== "idle") {
         throw new Error("invalid message order, chat context should be idle.");
       }
 
+      const index = get().messages.length;
+
       set((state) => ({
         messages: [...state.messages, message],
         streamingMessage: {
-          message_id: "",
+          message_id: assistant_id,
           role: "assistant",
           content: "",
         },
         status: "sending",
       }));
+
+      return index;
     },
 
     onStream: (messageID: string, chunk: string) =>

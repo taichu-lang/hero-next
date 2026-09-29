@@ -115,8 +115,10 @@ export function ChatMessage({
   return (
     <div
       role="group"
+      // pb-x: gap between messages.
+      // gap-x: gap between bubble and metadata.
       className={clsx(
-        "group/message flex w-full flex-col text-sm",
+        "group/message flex w-full flex-col pb-4 text-sm",
         { sm: "gap-1", md: "gap-2", lg: "gap-3" }[spacing],
         {
           "items-start": align === "start",
