@@ -1,26 +1,11 @@
 "use client";
 
-import {
-  Button,
-  Drawer,
-  Link,
-  ScrollShadow,
-  useMediaQuery,
-  useOverlayState,
-} from "@heroui/react";
+import { Button, Drawer, Link, ScrollShadow, useMediaQuery, useOverlayState } from "@heroui/react";
 import clsx from "clsx";
 import { PanelLeftCloseIcon } from "lucide-react";
 import NextLink from "next/link";
 import type { AnchorHTMLAttributes, DetailedHTMLProps, ReactNode } from "react";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 const MOBILE_BREAKPOINT = 768;
 const COLLAPSE_BREAKPOINT = 1024;
@@ -79,10 +64,9 @@ export function Sidebar({
   const isMobile = useMediaQuery(`(max-width: ${mobileBreakpoint - 1}px)`, {
     initializeWithValue: false,
   });
-  const isBelowCollapseBreakpoint = useMediaQuery(
-    `(max-width: ${collapseBreakpoint - 1}px)`,
-    { initializeWithValue: false },
-  );
+  const isBelowCollapseBreakpoint = useMediaQuery(`(max-width: ${collapseBreakpoint - 1}px)`, {
+    initializeWithValue: false,
+  });
 
   const isControlled = isCollapsedProp !== undefined;
   const [internalCollapsed, setInternalCollapsed] = useState(defaultCollapsed);
@@ -127,10 +111,7 @@ export function Sidebar({
             <Drawer.Content placement="left">
               <Drawer.Dialog
                 aria-label="Sidebar"
-                className={clsx(
-                  "flex h-full w-[280px] max-w-[85vw] flex-col",
-                  className,
-                )}
+                className={clsx("flex h-full w-[280px] max-w-[85vw] flex-col", className)}
               >
                 {children}
               </Drawer.Dialog>
@@ -162,17 +143,9 @@ export interface SidebarHeaderProps {
   className?: string;
 }
 
-Sidebar.Header = function SidebarHeader({
-  children,
-  className,
-}: SidebarHeaderProps) {
+Sidebar.Header = function SidebarHeader({ children, className }: SidebarHeaderProps) {
   return (
-    <div
-      className={clsx(
-        "border-default flex h-14 shrink-0 items-center gap-2 px-3",
-        className,
-      )}
-    >
+    <div className={clsx("border-default flex h-14 shrink-0 items-center gap-2 px-3", className)}>
       {children}
     </div>
   );
@@ -186,9 +159,7 @@ export interface SidebarBodyProps {
 Sidebar.Body = function SidebarBody({ children, className }: SidebarBodyProps) {
   return (
     <ScrollShadow className="min-h-0 flex-1" orientation="vertical">
-      <nav className={clsx("flex flex-col gap-1 p-2", className)}>
-        {children}
-      </nav>
+      <nav className={clsx("flex flex-col gap-1 p-2", className)}>{children}</nav>
     </ScrollShadow>
   );
 };
@@ -198,17 +169,9 @@ export interface SidebarFooterProps {
   className?: string;
 }
 
-Sidebar.Footer = function SidebarFooter({
-  children,
-  className,
-}: SidebarFooterProps) {
+Sidebar.Footer = function SidebarFooter({ children, className }: SidebarFooterProps) {
   return (
-    <div
-      className={clsx(
-        "border-default mt-auto flex shrink-0 items-center gap-2 border-t p-1.5",
-        className,
-      )}
-    >
+    <div className={clsx("border-default mt-auto flex shrink-0 items-center gap-2 border-t p-1.5", className)}>
       {children}
     </div>
   );
@@ -286,8 +249,8 @@ Sidebar.Item = function SidebarItem({
   return (
     <Button
       aria-current={isActive ? "true" : undefined}
-      // - Override HeroUI Button's default `justify-center` so content stays left-aligned;
-      //   otherwise it re-centers mid-transition as the sidebar width and label width animate together.
+      // - Override HeroUI Button's default `justify-center` so content stays left-aligned; otherwise it
+      //   re-centers mid-transition as the sidebar width and label width animate together.
       // - Use `transform-none` to disable the pressed scale transform so this matches the Link branch above,
       //   which has no press animation. Can't use `scale-100`.
       className={clsx(

@@ -4,11 +4,7 @@ import { Button, ButtonProps } from "@heroui/react";
 import clsx from "clsx";
 import { ArrowUpIcon, CircleXIcon, TriangleAlertIcon } from "lucide-react";
 import { useRef, useState } from "react";
-import {
-  ChatComposerInput,
-  ChatComposerInputHandler,
-  ChatComposerInputProps,
-} from "./ChatComposerInput";
+import { ChatComposerInput, ChatComposerInputHandler, ChatComposerInputProps } from "./ChatComposerInput";
 
 interface ComposerStatus {
   type: "error" | "warning";
@@ -68,17 +64,12 @@ function ChatComposerStatus({ type, message }: ComposerStatus) {
 
   return (
     <div
-      className={clsx(
-        "-mt-7 flex items-center gap-2 rounded-b-3xl px-4 pt-10 pb-3 text-xs",
-        {
-          "bg-warning-soft text-warning-soft-foreground": warning,
-          "bg-danger-soft text-danger-soft-foreground": error,
-        },
-      )}
+      className={clsx("-mt-7 flex items-center gap-2 rounded-b-3xl px-4 pt-10 pb-3 text-xs", {
+        "bg-warning-soft text-warning-soft-foreground": warning,
+        "bg-danger-soft text-danger-soft-foreground": error,
+      })}
     >
-      {warning && (
-        <TriangleAlertIcon className="text-warning-soft-foreground h-4 w-4" />
-      )}
+      {warning && <TriangleAlertIcon className="text-warning-soft-foreground h-4 w-4" />}
       {error && <CircleXIcon className="text-danger-soft-foreground h-4 w-4" />}
       {message}
     </div>
@@ -107,12 +98,7 @@ export function ChatComposer({
   };
 
   return (
-    <div
-      className={clsx(
-        "bg-background-secondary flex w-full flex-col shadow-inner",
-        radius,
-      )}
-    >
+    <div className={clsx("bg-background-secondary flex w-full flex-col shadow-inner", radius)}>
       {drawer && <ChatComposerDrawer>{drawer}</ChatComposerDrawer>}
       <div
         className={clsx("flex flex-1 flex-col gap-2 p-3", radius, {
@@ -129,11 +115,7 @@ export function ChatComposer({
         <div className="flex min-h-0 items-center">
           {footActions}
           <div className="flex-1" />
-          <ChatComposeButton
-            variant="primary"
-            onClick={handleSend}
-            isDisabled={!text || disabled}
-          >
+          <ChatComposeButton variant="primary" onClick={handleSend} isDisabled={!text || disabled}>
             <ArrowUpIcon className="h-4 w-4" />
           </ChatComposeButton>
         </div>
@@ -146,9 +128,6 @@ export function ChatComposer({
 /**
  * ChatComposeButton declares the preferred button for actions in ChatComposer.
  */
-export function ChatComposeButton({
-  variant = "ghost",
-  ...props
-}: Omit<ButtonProps, "size">) {
+export function ChatComposeButton({ variant = "ghost", ...props }: Omit<ButtonProps, "size">) {
   return <Button isIconOnly size="sm" variant={variant} {...props} />;
 }

@@ -56,7 +56,7 @@ wanted  = listTop + anchorStart - inset     // inset 默认取 listTop，保持�
 ### 2.3 `getOffsetForAlignment` 会 clamp 到最大滚动量
 
 ```js
-const maxOffset = this.getMaxScrollOffset();   // scrollHeight - clientHeight
+const maxOffset = this.getMaxScrollOffset(); // scrollHeight - clientHeight
 return Math.max(Math.min(maxOffset, toOffset), 0);
 ```
 
@@ -68,7 +68,7 @@ return Math.max(Math.min(maxOffset, toOffset), 0);
 
 `itemSizeCache` 是 `Map<key, size>`。key 一变，已测量的真实高度就丢了，该行回落到 `estimateSize`，`getTotalSize()` 随之跳变，浏览器再夹一次 scrollTop。
 
-我们用 `message_id` 作 key。**这里有个潜在雷区**：`ChatContext.onStream` 会把 `streamingMessage.message_id` 覆盖成 SSE chunk 里的 `message.id`，而初始值是 `turn_start` 给的 `assistant_id`。这两个 id 如果不相等，首个 token 到达时 key 就会变一次。目前假定服务端保证两者一致（`ChatContext.tsx` 的注释也是这么写的），**改服务端 id 生成逻辑时要留意这条隐式契约**。
+我们用 `message_id` 作 key。
 
 另外 `getItemKey` 的函数标识是 `getMeasurements` memo 的依赖（`index.js:607`），内联箭头函数会让 measurements 每次渲染都重算。已用 `useCallback` 包好。
 

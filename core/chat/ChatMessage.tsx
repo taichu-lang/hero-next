@@ -42,16 +42,11 @@ export interface ChatMessageBubbleProps {
   radius?: ChatMessageBubbleRadius;
 }
 
-export function ChatMessageBubble({
-  children,
-  variant = "ghost",
-  radius = "md",
-}: ChatMessageBubbleProps) {
+export function ChatMessageBubble({ children, variant = "ghost", radius = "md" }: ChatMessageBubbleProps) {
   return (
     <div
       className={clsx("min-w-0 text-sm", {
-        "bg-default w-fit max-w-[max(80%,280px)] px-3.5 py-2.5":
-          variant === "filled",
+        "bg-default w-fit max-w-[max(80%,280px)] px-3.5 py-2.5": variant === "filled",
         "w-full bg-transparent": variant === "ghost",
         "rounded-lg": radius === "sm",
         "rounded-xl": radius === "md", // 12px
@@ -78,18 +73,11 @@ export function ChatMessageMetadata({
 }: ChatMessageMetadataProps) {
   return (
     <div
-      className={clsx(
-        "flex items-center",
-        { sm: "gap-1", md: "gap-2", lg: "gap-3" }[spacing],
-        {
-          "opacity-0 transition-opacity duration-150 motion-reduce:transition-none":
-            reveal === "hover",
-          "group-focus-within/message:opacity-100 group-hover/message:opacity-100":
-            reveal === "hover",
-          "focus-within:opacity-100 pointer-coarse:opacity-100":
-            reveal === "hover",
-        },
-      )}
+      className={clsx("flex items-center", { sm: "gap-1", md: "gap-2", lg: "gap-3" }[spacing], {
+        "opacity-0 transition-opacity duration-150 motion-reduce:transition-none": reveal === "hover",
+        "group-focus-within/message:opacity-100 group-hover/message:opacity-100": reveal === "hover",
+        "focus-within:opacity-100 pointer-coarse:opacity-100": reveal === "hover",
+      })}
     >
       {enableCopy && <ChatMessageCopyAction />}
       {children}
@@ -104,12 +92,7 @@ export interface ChatMessageProps {
   spacing?: "sm" | "md" | "lg";
 }
 
-export function ChatMessage({
-  role,
-  align,
-  spacing = "md",
-  children,
-}: ChatMessageProps) {
+export function ChatMessage({ role, align, spacing = "md", children }: ChatMessageProps) {
   align = align || (role === "user" ? "end" : "stretch");
 
   return (

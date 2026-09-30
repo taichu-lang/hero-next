@@ -39,12 +39,7 @@ export function ModelSelector({
       <Select.Popover className={"rounded-2xl"}>
         <ListBox>
           {models.map((model) => (
-            <ListBox.Item
-              key={model.id}
-              id={model.id}
-              textValue={model.name}
-              aria-label={model.name}
-            >
+            <ListBox.Item key={model.id} id={model.id} textValue={model.name} aria-label={model.name}>
               {model.name}
             </ListBox.Item>
           ))}

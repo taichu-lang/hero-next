@@ -98,12 +98,10 @@ const createChatStore = (scroll: HTMLDivElement | null) =>
         };
       }),
 
-    // Client uses AbortController to interrupt the streaming. Once the
-    // AbortController is aborted, client drops the connection, which means
-    // client does not receive any more data from the server. However, the
-    // server might not close the connection to llm provider immediately. We
-    // can not get the balance after abort the connection, as there is a time
-    // delay between the aborting and usage calculation in the server side. The
+    // Client uses AbortController to interrupt the streaming. Once the AbortController is aborted, client drops
+    // the connection, which means client does not receive any more data from the server. However, the server
+    // might not close the connection to llm provider immediately. We can not get the balance after abort the
+    // connection, as there is a time delay between the aborting and usage calculation in the server side. The
     // balance should be updated after the next turn.
     stopStreaming: (reason?: StopReason, message?: Message) =>
       set((state) => {
@@ -132,11 +130,9 @@ const createChatStore = (scroll: HTMLDivElement | null) =>
         };
       }),
 
-    appendMessage: (messages) =>
-      set((state) => ({ messages: [...state.messages, ...messages] })),
+    appendMessage: (messages) => set((state) => ({ messages: [...state.messages, ...messages] })),
 
-    prependMessage: (messages) =>
-      set((state) => ({ messages: [...messages, ...state.messages] })),
+    prependMessage: (messages) => set((state) => ({ messages: [...messages, ...state.messages] })),
 
     hydrate: (messages) => set({ messages }),
   }));
@@ -150,14 +146,13 @@ export function ChatContextProvider({
   scroll: HTMLDivElement | null;
   children: React.ReactNode;
 }) {
-  // A fresh store per Provider instance. Then, the key of ChatProvider changes, it will be remounted,
-  // and all states in ChatContext will be reset, including the network connection. It's a pure way
-  // to clean up all the states.
+  // A fresh store per Provider instance. Then, the key of ChatProvider changes, it will be remounted, and all
+  // states in ChatContext will be reset, including the network connection. It's a pure way to clean up all the
+  // states.
   const [store] = useState(() => createChatStore(scroll));
 
-  // `scroll` starts as null (the ref callback hasn't fired on first render)
-  // and the store is only created once, so later scroll updates must be
-  // pushed in explicitly or the virtualizer's getScrollElement() stays null
+  // `scroll` starts as null (the ref callback hasn't fired on first render) and the store is only created once,
+  // so later scroll updates must be pushed in explicitly or the virtualizer's getScrollElement() stays null
   // forever and getVirtualItems() never returns any rows.
   useEffect(() => {
     store.setState({ scrollElement: scroll });

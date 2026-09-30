@@ -32,11 +32,7 @@ export function ChatMessageCopyAction() {
 
   return (
     <ActionButton onClick={handleCopy}>
-      {copied ? (
-        <CopyCheckIcon className="text-success h-4.5 w-4.5" />
-      ) : (
-        <CopyIcon className="h-4.5 w-4.5" />
-      )}
+      {copied ? <CopyCheckIcon className="text-success h-4.5 w-4.5" /> : <CopyIcon className="h-4.5 w-4.5" />}
     </ActionButton>
   );
 }
