@@ -5,6 +5,7 @@
   "private": true,
   "exports": {
     "./chat": "./core/chat/index.ts",
+    "./effects": "./core/effects/index.ts",
     "./layout": "./core/layout/index.ts",
     "./theme": "./core/theme/index.ts",
     "./i18n/*": "./i18n/*.ts",

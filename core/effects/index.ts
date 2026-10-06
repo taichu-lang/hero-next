@@ -1,0 +1,1 @@
+export { AnimatedBorder } from "./AnimatedBorder";

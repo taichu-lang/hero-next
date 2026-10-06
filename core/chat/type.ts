@@ -10,8 +10,6 @@ export interface Message {
   hasError?: boolean;
 }
 
-export type ResponseChunkType = "delta" | "final" | "done";
-
 export interface TextContent {
   type: "text";
   text: string;
@@ -28,7 +26,6 @@ export type MessageContent = TextContent | UsageContent;
 
 export interface ResponseChunk {
   id: string;
-  type: ResponseChunkType;
   role: Role;
   contents: MessageContent[];
 }

@@ -1,6 +1,6 @@
 # 聊天消息列表（ChatMessageList）
 
-这份文档记录 `blocks/chat/ChatMessageList.tsx` 的实现要点、TanStack Virtual 的坑，以及"用户消息置顶 / 自动滚到底部"两个需求的问题定位结论。目的是下次改需求或排查问题时直接看这里，不用再翻 `@tanstack/virtual-core` 的源码。
+这份文档记录 `blocks/chat/ChatMessageList.tsx` 的实现要点、TanStack Virtual 的坑，以及"用户消息置顶 / 自动滚到底部 / 贴底状态上报"几个问题的定位结论。目的是下次改需求或排查问题时直接看这里，不用再翻 `@tanstack/virtual-core` 的源码。
 
 依赖版本：`@tanstack/react-virtual` ^3.14.13，实际安装 `virtual-core@3.17.11`。**下面引用的源码行为都以 3.17.11 为准，跨大版本升级后需要重新确认。**
 
@@ -150,9 +150,60 @@ below = scrollHeight - (listTop + total + spacer 当前实际高度)
 
 解法是 `stickTick` 计数器：两个 imperative 方法都 `setStickTick(n => n + 1)`，并把它列进 effect 依赖。凡是"只改 ref 的命令式 API + 靠 effect 生效"的组合，都要记得补这一步。
 
+### 4.1 首次加载：默认就是 bottom 模式
+
+`stickRef` / `heldRef` 的初始值直接就是 `{ mode: "bottom" }` / `true`，不需要页面在 mount 后再调一次 `scrollToBottom()`。
+
+这么做而不是"算一次高度、写一次 scrollTop"，是因为**首屏的底部位置要过好几帧才稳定**：
+
+- `hydrate()` 在页面的 effect 里跑，mount 时 `messages` 还是空的；
+- `scrollElement` 也要等 `ChatScrollArea` 的 ref callback + Provider 的 effect 推进 store 才非 null（在那之前 layout effect 直接 return）；
+- 虚拟行只有渲染出来才会被测量，第一次贴底用的是 `estimateSize` 的估算值，测量到位后 `getTotalSize()` 变大，底部还会往下跑。
+
+贴底分支在每次 commit 都重写 `scrollTop = scrollHeight - clientHeight`，上面三件事无论按什么顺序发生都会被收敛掉。因为目标恒为底部，迭代不会来回震荡。
+
+释放规则跟运行时贴底完全一致（第 6 节）：用户第一个滚动手势就放手，`stickToMessage()` 会直接顶掉它。所以新会话"发消息 → 该消息置顶"的路径不受影响。
+
 ---
 
-## 5. 释放与重新接管
+## 5. `scrollPositionListener`（"是否贴底"）不能只靠 scroll 事件
+
+### 5.1 现象
+
+新会话里发第一条消息，置顶逻辑补了一大块 spacer，滚动条出现；此时点"回到底部"按钮，**滚动条确实消失了，但按钮不消失** —— `scrollPositionListener` 没有收到 `true`。
+
+### 5.2 根因
+
+`distance = scrollHeight - clientHeight - scrollTop`，三个量都会变，但**只有 `scrollTop` 变化会派发 `scroll` 事件**。内容高度和视口高度变化是静默的。
+
+这个场景刚好踩在静默路径上：
+
+1. 置顶的是第一条用户消息，`anchorIndex === 0` → `anchorStart === 0` → `wanted === 0`，于是 **scrollTop 一直是 0**，滚动条纯粹是 spacer 撑出来的，位置停在顶部，`distance ≈ 一屏`；
+2. `scrollToBottom()` 把 spacer 清零，`scrollHeight` 塌回 `clientHeight`，`distance` 变成 0；
+3. 但 scrollTop 本来就是 0，**没有发生夹紧，浏览器不派发 scroll**，`onScroll` 不执行，上报的值停在 `false`。
+
+同一个盲区还会以别的形式出现，排查时一并考虑：
+
+- 流式输出时内容变高、scrollTop 被钉住不动 → 实际已经离开底部，却不会上报 `false`；
+- 窗口 resize 改变 `clientHeight` → 同样不上报（viewport 的 `ResizeObserver` 只更新 `viewportHeight`）；
+- 即使某些路径上 scrollTop 真的被夹紧了，scroll 事件也是异步的，和置顶逻辑不同步。
+
+（早先的权宜之计是在挂监听时主动调一次 `onScroll()`，只补上了"首次订阅"这一个时刻，上面三条都没覆盖，现已移除。）
+
+### 5.3 解法
+
+把"算 + 上报"抽成 `reportBottom()`，调用点从「scroll 事件」改成「scroll 事件 **＋ 每次 commit 之后**」：
+
+- `onScroll` 开头调一次；
+- 另起一个**不带依赖数组**的 `useIsomorphicLayoutEffect(reportBottom)`，声明在置顶 layout effect **之后**，保证读到的是置顶刚写完的位置。spacer 塌缩、流式增高、resize 引起的重渲染因此全部覆盖。
+
+`reportedRef` 记住上一次上报的布尔值，只在真正翻转时才调 `scrollPositionListener`，避免每个 token 都往父组件 `setState`。
+
+注意 `reportBottom` 进了 scroll 监听 effect 的依赖，所以页面传进来的 `scrollPositionListener` **必须是稳定引用**（当前页面传的是 `setAtBottom`），否则每次渲染都会重新挂卸监听。
+
+---
+
+## 6. 释放与重新接管
 
 钉住状态（`heldRef`）在以下任一情况下释放，之后列表恢复成普通滚动容器：
 
@@ -163,16 +214,17 @@ below = scrollHeight - (listTop + total + spacer 当前实际高度)
 
 ---
 
-## 6. 改动时的注意事项
+## 7. 改动时的注意事项
 
 - **别把 `estimateSize` 拿来撑高度。** 估算值只在未测量时生效，测量一到就跳变，反而制造滚动跳动。要预留空间就加真实的 spacer 元素。
 - **任何让内容变矮的改动都可能触发浏览器夹紧 scrollTop。** 加折叠、删消息、换 Markdown 渲染器之前，先想清楚 `scrollHeight - clientHeight` 会不会掉到锚点下面。
 - **layout effect 里每个 token 都会读一次 `getBoundingClientRect` / `scrollHeight`，强制同步布局。** 目前可接受；如果消息体变重出现掉帧，优先考虑缓存 `listTop`（它只随 Nav 高度变化）而不是改成异步。
 - **`measurementsCache` 在类型定义里是 public，`getMeasurements()` 是 private。** 所以读锚点偏移用 `virtualizer.measurementsCache[i].start`，并且要先调一次 `getTotalSize()` 刷新 memo。
+- **任何"从 DOM 测量里派生出来的对外状态"都别只挂在事件上。** 第 5 节是一个具体案例：scroll 事件只覆盖三个输入量里的一个。新增这类状态时，默认把它放进每次 commit 后的 layout effect，再用 ref 去重。
 - 升级 `@tanstack/react-virtual` 后，重新核对 2.1 / 2.2 / 2.3 / 2.7 这几条 —— 它们都依赖未公开的内部行为。
 
 ---
 
-## 7. 验证状态
+## 8. 验证状态
 
 本文的因果分析来自阅读 `ChatMessageList.tsx`、`ChatContext.tsx`、`useEventSource.tsx` 与 `virtual-core@3.17.11` 的构建产物；引用的常量和分支都在源码里确认过。**尚未在运行中的应用里断点验证，也未跑类型检查 / 构建。** 联调时如果发现实际表现与 3.2 的推断不符，请回来更新这一节。

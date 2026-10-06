@@ -23,10 +23,9 @@ export interface ChatContextValue {
    */
   streamingMessage: Message | null;
 
-  /**
-   * @returns The index of the message in the messages array.
-   */
-  addUserMessage: (message: Message, assistant_id: string) => number;
+  setStatus: (status: ChatStatus) => void;
+
+  addUserMessage: (message: Message) => void;
 
   onStream: (messageID: string, chunk: string) => void;
 
@@ -61,32 +60,24 @@ const createChatStore = (scroll: HTMLDivElement | null) =>
     messages: [],
     streamingMessage: null,
 
-    addUserMessage: (message: Message, assistant_id: string): number => {
-      if (get().status !== "idle") {
-        throw new Error("invalid message order, chat context should be idle.");
-      }
+    setStatus: (status) => {
+      set({ status });
+    },
 
-      const index = get().messages.length;
+    addUserMessage: (message: Message) => {
+      if (get().status !== "sending") {
+        throw new Error("invalid message order, chat context should be sending.");
+      }
 
       set((state) => ({
         messages: [...state.messages, message],
-        streamingMessage: {
-          message_id: assistant_id,
-          role: "assistant",
-          content: "",
-        },
-        status: "sending",
+        status: "streaming",
       }));
-
-      return index;
     },
 
     onStream: (messageID: string, chunk: string) =>
       set((state) => {
-        const lastMessage = state.streamingMessage;
-        if (!lastMessage || lastMessage.role !== "assistant") {
-          return state;
-        }
+        const lastMessage = state.streamingMessage || { content: "", message_id: "", role: "assistant" };
 
         return {
           streamingMessage: {
@@ -94,7 +85,6 @@ const createChatStore = (scroll: HTMLDivElement | null) =>
             content: lastMessage.content + chunk,
             message_id: messageID,
           },
-          status: "streaming",
         };
       }),
 
@@ -126,7 +116,6 @@ const createChatStore = (scroll: HTMLDivElement | null) =>
         return {
           messages: [...state.messages, message || { ...streamingMessage }],
           streamingMessage: null,
-          status: "idle",
         };
       }),
 

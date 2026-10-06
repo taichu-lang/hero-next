@@ -24,11 +24,11 @@ const BOTTOM_THRESHOLD = 8;
 
 // What the scrollbar is currently tied to. Either mode is released by the first deliberate scroll gesture;
 // "bottom" re-engages once the user scrolls back down to the end.
-type Stick = { mode: "message"; index: number; key: string | null } | { mode: "bottom" };
+type Stick = { mode: "message"; id: string } | { mode: "bottom" };
 
 export interface ChatMessageListHandler {
   // Let scrollbar to be sticky to the given message.
-  stickToMessage: (index: number) => void;
+  stickToMessage: (id: string) => void;
 
   // Let scrollbar to be sticky to the bottom, so a streaming message keeps scrolling itself into view.
   scrollToBottom: () => void;
@@ -37,6 +37,7 @@ export interface ChatMessageListHandler {
 export function ChatMessageList({
   handleRef,
   topInset,
+  scrollPositionListener,
 }: {
   handleRef?: React.Ref<ChatMessageListHandler>;
 
@@ -46,17 +47,29 @@ export function ChatMessageList({
    * layout.
    */
   topInset?: number;
+
+  /**
+   * Fired whenever the scroll container's "at (near) bottom" state changes, for callers that render UI
+   * outside this list (e.g. a "jump to latest" button) and need to know without holding a ref into the DOM.
+   */
+  scrollPositionListener?: (bottom: boolean) => void;
 }) {
   const { messages, scrollElement, streamingMessage } = useChatContext();
 
   const listRef = useRef<HTMLDivElement>(null);
   const spacerRef = useRef<HTMLDivElement>(null);
 
-  // What the scrollbar is tied to, and whether we are still holding it there. For "message", `key` is resolved
-  // lazily: stickToMessage() is called from the same event that pushes the message into the store, so at that
-  // point `messages` here is still the previous render's array.
-  const stickRef = useRef<Stick | null>(null);
-  const heldRef = useRef(false);
+  // What the scrollbar is tied to, and whether we are still holding it there. "message" holds a message id
+  // rather than an index: stickToMessage() is called from the same event that pushes the message into the
+  // store, so at that point `messages` here is still the previous render's array, and loading older messages
+  // later shifts every index anyway.
+  //
+  // It starts out following the bottom so the list opens on the newest message: the history arrives after mount
+  // (hydrate runs in an effect) and the rows are only measured once they render, so the end of the list keeps
+  // moving for several commits. Holding "bottom" rides all of them out. The first scroll gesture releases it and
+  // stickToMessage() replaces it, exactly as for a pin requested at runtime.
+  const stickRef = useRef<Stick | null>({ mode: "bottom" });
+  const heldRef = useRef(true);
 
   // The last scrollTop this component wrote. Scroll events are dispatched at most once per frame and always
   // after the write that caused them, so a scroll landing anywhere else came from the user — dragging the
@@ -129,10 +142,10 @@ export function ChatMessageList({
     [virtualizer, virtualItems, messages.length],
   );
 
-  const stickToMessage = useCallback((index: number) => {
-    // The store was updated in this same event, so `messages` is still the previous array here. Record the index
-    // only; the layout effect resolves it to a message id once the new list has been committed.
-    stickRef.current = { mode: "message", index, key: null };
+  const stickToMessage = useCallback((id: string) => {
+    // The store was updated in this same event, so `messages` is still the previous array here. Record the id
+    // only; the layout effect resolves it to a row once the new list has been committed.
+    stickRef.current = { mode: "message", id };
     heldRef.current = true;
     appliedRef.current = null;
     setStickTick((n) => n + 1);
@@ -147,6 +160,23 @@ export function ChatMessageList({
 
   useImperativeHandle(handleRef, () => ({ stickToMessage, scrollToBottom }));
 
+  // Last value handed to scrollPositionListener, so the listener only hears about actual transitions and not
+  // about every streamed token.
+  const reportedRef = useRef<boolean | null>(null);
+
+  // "At the bottom" moves whenever scrollTop, scrollHeight or clientHeight changes, but only the first of those
+  // fires an event: collapsing the spacer while parked at scrollTop === 0, growing the list under a held pin and
+  // resizing the viewport all change the answer silently. So this is called from the scroll handler *and* after
+  // every commit.
+  const reportBottom = useCallback(() => {
+    if (!scrollElement) return;
+    const distance = scrollElement.scrollHeight - scrollElement.clientHeight - scrollElement.scrollTop;
+    const bottom = distance <= BOTTOM_THRESHOLD;
+    if (reportedRef.current === bottom) return;
+    reportedRef.current = bottom;
+    scrollPositionListener?.(bottom);
+  }, [scrollElement, scrollPositionListener]);
+
   // Any deliberate scroll gesture releases the pin: from then on the list behaves like a plain scroll container
   // again. Programmatic scrollTop writes don't fire these events, so they can't release it by accident.
   useEffect(() => {
@@ -155,6 +185,8 @@ export function ChatMessageList({
       heldRef.current = false;
     };
     const onScroll = () => {
+      reportBottom();
+
       if (heldRef.current) {
         const applied = appliedRef.current;
         if (applied !== null && Math.abs(scrollElement.scrollTop - applied) > BOTTOM_THRESHOLD) {
@@ -162,6 +194,7 @@ export function ChatMessageList({
         }
         return;
       }
+
       // Bottom-following is the one mode that can be picked back up: scrolling down to the end again means the
       // user wants to keep watching it.
       if (stickRef.current?.mode !== "bottom") return;
@@ -175,13 +208,14 @@ export function ChatMessageList({
     scrollElement.addEventListener("touchmove", release, opts);
     scrollElement.addEventListener("keydown", release);
     scrollElement.addEventListener("scroll", onScroll, opts);
+
     return () => {
       scrollElement.removeEventListener("wheel", release);
       scrollElement.removeEventListener("touchmove", release);
       scrollElement.removeEventListener("keydown", release);
       scrollElement.removeEventListener("scroll", onScroll);
     };
-  }, [scrollElement]);
+  }, [scrollElement, reportBottom]);
 
   // Hold the scrollbar where it was asked to stay. This runs after every commit — including every streamed token
   // and the commit that moves the finished assistant message from `streamingMessage` into `messages` — so the
@@ -209,20 +243,14 @@ export function ChatMessageList({
       return;
     }
 
-    // Track the anchor by message id so that loading older messages, which shifts every index, doesn't strand it
-    // on a different message.
-    if (anchor.key === null) {
-      anchor.key = messages[anchor.index]?.message_id ?? null;
-      if (anchor.key === null) return;
-    } else {
-      const found = messages.findIndex((m) => m.message_id === anchor.key);
-      if (found < 0) return;
-      anchor.index = found;
-    }
+    // Resolve the anchor on every run: tracking it by message id means loading older messages, which shifts
+    // every index, doesn't strand it on a different message.
+    const anchorIndex = messages.findIndex((m) => m.message_id === anchor.id);
+    if (anchorIndex < 0) return;
 
     // getTotalSize() refreshes the measurements that measurementsCache reads.
     const total = virtualizer.getTotalSize();
-    const anchorStart = virtualizer.measurementsCache[anchor.index]?.start;
+    const anchorStart = virtualizer.measurementsCache[anchorIndex]?.start;
     if (anchorStart === undefined) return;
 
     // Offset of the list inside the scrollable content, ex: everything a sticky header occupies above it.
@@ -262,6 +290,11 @@ export function ChatMessageList({
     topInset,
     stickTick,
   ]);
+
+  // Declared after the pin effect so it reads the position the pin just settled on. No dependency array: the
+  // answer depends on three measurements the render output doesn't carry, and the ref above keeps the listener
+  // from hearing anything it already knows.
+  useIsomorphicLayoutEffect(reportBottom);
 
   return (
     <div className={"flex h-full w-full flex-col"}>
