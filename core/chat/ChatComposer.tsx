@@ -3,8 +3,12 @@
 import { Button, ButtonProps } from "@heroui/react";
 import clsx from "clsx";
 import { ArrowUpIcon, CircleXIcon, TriangleAlertIcon } from "lucide-react";
-import { useRef, useState } from "react";
-import { ChatComposerInput, ChatComposerInputHandler, ChatComposerInputProps } from "./ChatComposerInput";
+import {
+  ChatComposerInput,
+  ChatComposerProvider,
+  ChatComposerValue,
+  useChatComposer,
+} from "./ChatComposerInput";
 
 interface ComposerStatus {
   type: "error" | "warning";
@@ -41,9 +45,9 @@ export interface ChatComposerProps {
 
   status?: ComposerStatus;
 
-  input?: Omit<ChatComposerInputProps, "onChange" | "ref">;
+  input?: { placeholder?: string };
 
-  onSubmit: (value: string) => void;
+  onSubmit: (value: ChatComposerValue) => void;
 }
 
 // TODO(Leo): add collapsed state.
@@ -78,24 +82,24 @@ function ChatComposerStatus({ type, message }: ComposerStatus) {
 
 const radius = "rounded-3xl";
 
-export function ChatComposer({
+export function ChatComposer({ disabled = false, input, onSubmit, ...props }: ChatComposerProps) {
+  return (
+    <ChatComposerProvider disabled={disabled} placeholder={input?.placeholder} onSubmit={onSubmit}>
+      <ChatComposerLayout disabled={disabled} {...props} />
+    </ChatComposerProvider>
+  );
+}
+
+function ChatComposerLayout({
   elevation = "low",
   drawer,
   headerActions,
   headerContext,
   footActions,
   status,
-  disabled = false,
-  input,
-  onSubmit,
-}: ChatComposerProps) {
-  const [text, setText] = useState<string>("");
-  const inputRef = useRef<ChatComposerInputHandler>(null);
-
-  const handleSend = () => {
-    onSubmit(text);
-    inputRef.current?.clear();
-  };
+  disabled,
+}: Omit<ChatComposerProps, "input" | "onSubmit">) {
+  const { isEmpty, submit } = useChatComposer();
 
   return (
     <div className={clsx("bg-background-secondary flex w-full flex-col shadow-inner", radius)}>
@@ -111,11 +115,11 @@ export function ChatComposer({
           <div className="flex-1" />
           {headerContext}
         </div>
-        <ChatComposerInput onChange={setText} ref={inputRef} {...input} />
+        <ChatComposerInput />
         <div className="flex min-h-0 items-center">
           {footActions}
           <div className="flex-1" />
-          <ChatComposeButton variant="primary" onClick={handleSend} isDisabled={!text || disabled}>
+          <ChatComposeButton variant="primary" onClick={submit} isDisabled={isEmpty || disabled}>
             <ArrowUpIcon className="h-4 w-4" />
           </ChatComposeButton>
         </div>

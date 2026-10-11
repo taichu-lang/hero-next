@@ -360,7 +360,26 @@ function UserMessage() {
   return (
     <ChatMessage role="user">
       <ChatMessageBubble variant="filled" radius="lg">
-        {message.content}
+        <Streamdown
+          controls={false}
+          linkSafety={{ enabled: false }}
+          components={{
+            // Skill
+            a: ({ href, children, ...props }) => (
+              <a
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                className="text-warning outline-warning rounded-full px-2 py-0.75 outline-1 -outline-offset-1"
+                {...props}
+              >
+                {children}
+              </a>
+            ),
+          }}
+        >
+          {message.content}
+        </Streamdown>
       </ChatMessageBubble>
       <ChatMessageMetadata reveal="hover" />
     </ChatMessage>
@@ -373,7 +392,7 @@ function AssistantMessage({ streaming = false }: { streaming?: boolean }) {
   return (
     <ChatMessage role="assistant">
       <ChatMessageBubble>
-        <Streamdown controls={false} isAnimating={streaming}>
+        <Streamdown controls={false} isAnimating={streaming} linkSafety={{ enabled: false }}>
           {message.content}
         </Streamdown>
       </ChatMessageBubble>

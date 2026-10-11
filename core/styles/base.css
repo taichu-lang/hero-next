@@ -57,4 +57,26 @@
   ::-webkit-scrollbar-thumb:hover {
     background: var(--color-default);
   }
+
+  .dropdown__popover {
+    @apply bg-background-secondary rounded-2xl;
+  }
+
+  .dropdown__menu .menu-item {
+    @apply rounded-xl;
+  }
+
+  /* Placeholder */
+  .tiptap p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    pointer-events: none;
+    height: 0;
+  }
+
+  /* when skill chip is selected */
+  .node-skill.ProseMirror-selectednode .chip {
+    outline: 1px solid var(--color-warning);
+    outline-offset: -1px;
+  }
 }

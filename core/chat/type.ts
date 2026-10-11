@@ -29,3 +29,13 @@ export interface ResponseChunk {
   role: Role;
   contents: MessageContent[];
 }
+
+// Key fields:
+// npx skills add <source> --skill <name>
+export type Skill = {
+  name: string;
+  description: string;
+  source: string;
+  version?: string;
+  installation?: string;
+};
