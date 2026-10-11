@@ -3,6 +3,7 @@
 import { Button, ButtonProps } from "@heroui/react";
 import clsx from "clsx";
 import { ArrowUpIcon, CircleXIcon, TriangleAlertIcon } from "lucide-react";
+import { Suspense } from "react";
 import {
   ChatComposerInput,
   ChatComposerProvider,
@@ -84,9 +85,19 @@ const radius = "rounded-3xl";
 
 export function ChatComposer({ disabled = false, input, onSubmit, ...props }: ChatComposerProps) {
   return (
-    <ChatComposerProvider disabled={disabled} placeholder={input?.placeholder} onSubmit={onSubmit}>
-      <ChatComposerLayout disabled={disabled} {...props} />
-    </ChatComposerProvider>
+    // Tiptap's `useEditor` reads `Math.random()` during render, which Next.js refuses to
+    // prerender; the Suspense boundary streams the editor in at request time instead.
+    <Suspense
+      fallback={<div className={clsx("bg-background-secondary h-28 w-full shadow-inner", radius)} />}
+    >
+      <ChatComposerProvider
+        disabled={disabled}
+        placeholder={input?.placeholder}
+        onSubmit={onSubmit}
+      >
+        <ChatComposerLayout disabled={disabled} {...props} />
+      </ChatComposerProvider>
+    </Suspense>
   );
 }
 

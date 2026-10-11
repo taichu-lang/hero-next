@@ -1,4 +1,5 @@
 import { Key, ListBox, Select } from "@heroui/react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 export interface Model {
@@ -16,6 +17,7 @@ export function ModelSelector({
   defaultID?: string;
   onChange: (id: string) => void;
 }) {
+  const t = useTranslations("ModelSelector");
   const [selected, setSelected] = useState<Key | null>(defaultID || null);
 
   const handleChange = (v: Key | null) => {
@@ -25,7 +27,7 @@ export function ModelSelector({
 
   return (
     <Select
-      placeholder="选择模型"
+      placeholder={t("placeholder")}
       variant="secondary"
       aria-label="model selector"
       value={selected}

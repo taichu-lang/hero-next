@@ -160,10 +160,15 @@ export function ChatComposerProvider({
   const isEmpty =
     useEditorState({
       editor,
-      selector: ({ editor }) => !editor || editor.getText().trim() === "",
+      // A destroyed editor (e.g. the previous page's, during route transitions) has no schema,
+      // so `getText()` would throw; treat it as empty.
+      selector: ({ editor }) => !editor || editor.isDestroyed || editor.getText().trim() === "",
     }) ?? true;
 
-  const getValue = useCallback(() => (editor ? readValue(editor) : EMPTY_VALUE), [editor]);
+  const getValue = useCallback(
+    () => (editor && !editor.isDestroyed ? readValue(editor) : EMPTY_VALUE),
+    [editor],
+  );
 
   const clear = useCallback(() => {
     editor?.commands.clearContent(true);

@@ -1,1 +1,15 @@
-{}
+{
+  "Carousel": {
+    "label": "轮播图",
+    "previous": "上一张",
+    "next": "下一张",
+    "resume": "继续自动播放",
+    "pause": "暂停自动播放",
+    "unmute": "取消静音",
+    "mute": "静音",
+    "goToSlide": "跳转到第 {index} 张，共 {total} 张"
+  },
+  "ModelSelector": {
+    "placeholder": "选择模型"
+  }
+}

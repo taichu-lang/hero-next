@@ -1,1 +1,15 @@
-{}
+{
+  "Carousel": {
+    "label": "Carousel",
+    "previous": "Previous slide",
+    "next": "Next slide",
+    "resume": "Resume autoplay",
+    "pause": "Pause autoplay",
+    "unmute": "Unmute",
+    "mute": "Mute",
+    "goToSlide": "Go to slide {index} of {total}"
+  },
+  "ModelSelector": {
+    "placeholder": "Select a model"
+  }
+}
