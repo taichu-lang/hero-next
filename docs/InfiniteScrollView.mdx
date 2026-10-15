@@ -1,0 +1,199 @@
+# InfiniteScrollView
+
+基于 `@tanstack/react-virtual` 封装的虚拟化无限滚动列表。组件自身持有分页状态、双向 sentinel、以及顶部预置（prepend）时的滚动锚点保持，调用方只需提供每个 section 的 `fetch`。
+
+## 引入
+
+```tsx
+import { InfiniteScrollView } from "hero-next/layout";
+import type { InfiniteSection, InfiniteScrollViewHandle } from "hero-next/layout";
+```
+
+## 基础用法
+
+一个 section、从头开始加载：
+
+```tsx
+<InfiniteScrollView<Order>
+  limit={20}
+  className="h-full"
+  sections={[
+    {
+      key: "orders",
+      getItemKey: (item) => item.id.toString(),
+      fetch: async ({ after, limit, signal }) => {
+        const from = after ? Number(after) : 0;
+        return await getOrders(from, limit, signal);
+      },
+    },
+  ]}
+  renderItem={(item) => <OrderRow order={item} />}
+/>
+```
+
+`fetch` 的返回长度等于 `limit` 时，组件判定"可能还有下一页"；返回长度小于 `limit` 视为到底。
+
+## Section 配置
+
+| 字段                             | 类型                       | 说明                                                                            |
+| -------------------------------- | -------------------------- | ------------------------------------------------------------------------------- |
+| `key`                            | `string`                   | Section 唯一标识，也是内部状态 map 的 key                                       |
+| `fetch`                          | `(params) => Promise<T[]>` | 见下                                                                            |
+| `getItemKey`                     | `(item) => string`         | 每一项的稳定 key，用于虚拟化 `getItemKey`                                       |
+| `initialCursor`                  | `{ before?, after? }`      | 首次拉取的游标；传入后表示"跳转到中间"，两侧都可能有更多                        |
+| `marginTop` `marginBottom`       | `number`                   | Section 上下留白，在滚动区**内部**（`marginTop` 仅第二个及以后的 section 生效） |
+| `collapsible` `defaultCollapsed` | `boolean`                  | 配合 `renderHeader` 做折叠                                                      |
+| `estimateItemSize`               | `number`                   | 该 section 单行高度估计，覆盖顶层 `estimateItemSize`                            |
+| `showWhenEmpty`                  | `boolean`                  | 默认 `true`；设 `false` 时空 section 完全不渲染                                 |
+| `emptyState`                     | `ReactNode`                | 空态占位（`items.length === 0` 且两侧都没有更多时展示）                         |
+
+`fetch` 参数：
+
+```ts
+{
+  before?: string;   // 拉取更早的一页（loadTop）
+  after?: string;    // 拉取更新的一页（loadBottom）
+  limit: number;
+  signal: AbortSignal;
+}
+```
+
+- 组件用 `items.length === limit` 判断"还有更多"，`fetch` 请求返回的条数应尽量等于 `limit`；返回 0 条会停止该方向的继续加载。
+- `signal` 会在 unmount、`refresh()`、或该方向被新一次请求取代时触发；`fetch` 内部应传给 `fetch`/`axios` 等以支持取消。
+- `before` 和 `after` 都由 `getItemKey` 返回的字符串充当游标（首/末项的 key）。
+
+## 顶层参数
+
+| 参数                 | 默认值        | 说明                                              |
+| -------------------- | ------------- | ------------------------------------------------- |
+| `limit`              | `30`          | 每页请求条数                                      |
+| `estimateItemSize`   | `36`          | 单行估计高度，用于虚拟化预留空间                  |
+| `estimateHeaderSize` | `32`          | Sticky header 估计高度                            |
+| `overscan`           | `6`           | 视口外多渲染的行数                                |
+| `loadingIndicator`   | `<Loading />` | 顶/底 sentinel 加载态与初次加载态复用同一个指示器 |
+| `className`          | —             | 追加到滚动容器 `<div>` 上                         |
+| `renderHeader`       | —             | 传入才会生成 header 行；带 sticky 效果            |
+| `ref`                | —             | 见下                                              |
+| `handleRef`          | —             | 见下                                              |
+
+## `ref` 与 `handleRef`：不要弄混
+
+这是最容易踩坑的两个 prop。
+
+- **`ref`**：指向组件内部**滚动容器 `<div>`**。用于外部需要直接读 DOM 的场景——`scrollTop`、`ResizeObserver`、自己挂 `scroll` 监听等。它**不能用来让外部 div 接管滚动**。
+- **`handleRef`**：命令式 API 句柄，暴露 `scrollToSection` / `scrollToTop` / `scrollToBottom` / `refresh`。绝大多数交互需求（滚到某个 section、拉新刷新）用它就够了。
+
+```tsx
+const handleRef = useRef<InfiniteScrollViewHandle>(null);
+
+<InfiniteScrollView
+  handleRef={handleRef}
+  // ...
+/>;
+
+// 外部触发刷新
+handleRef.current?.refresh();
+// 或刷新指定 section
+handleRef.current?.refresh("orders");
+```
+
+### 不要把外层 div 也用作滚动容器
+
+组件必须自己是滚动元素——`useVirtualizer` 的 `getScrollElement` 和 sentinel 的 `IntersectionObserver.root` 都指向这个内部 `<div>`。如果在它外面再套一个滚动 div 并把它的 `overflow` 隐藏，会导致：
+
+- Virtualizer 滚动监听绑在不动的元素上，可视 range 不更新
+- Sentinel 的 IntersectionObserver 永远不会 intersect，`loadBottom` 不再触发
+
+**限定高度请直接给 `InfiniteScrollView` 自己**（通过 `className` 或父容器 flex 布局），不要在外面套一个自己滚的 div：
+
+```tsx
+// 错
+<div className="max-h-80 overflow-y-auto">
+  <InfiniteScrollView className="overflow-hidden" ... />
+</div>
+
+// 对：直接约束组件本身
+<InfiniteScrollView className="max-h-80" ... />
+
+// 对：父容器 flex 布局 + 组件占满剩余空间
+<div className="flex h-full flex-col">
+  <Header />
+  <InfiniteScrollView className="flex-1 min-h-0" ... />
+</div>
+```
+
+## 在 Dialog / 有限高度容器中使用
+
+Dialog、Popover 里放列表时，"内部滚动 + 底部留一点空白"是常见需求。用 `className` 限高，用 section 的 `marginBottom` 加内部留白——这样留白在滚动区里，不占外部布局，也不会影响 sentinel。
+
+```tsx
+<InfiniteScrollView<Order>
+  limit={6}
+  className="max-h-80"
+  sections={[
+    {
+      key: "orders",
+      marginBottom: 40, // 底部内部留白，让最后一行不贴边
+      getItemKey: (item) => item.id.toString(),
+      fetch: async ({ after, limit, signal }) => {
+        const from = after ? Number(after) : 0;
+        return await getOrders(from, limit, signal);
+      },
+    },
+  ]}
+  renderItem={(item) => <OrderRow order={item} />}
+/>
+```
+
+组件内置自动补偿：当首屏 items 不足以让容器可滚（高度未超过 `clientHeight + 200px` 预取带），会继续调用 `loadBottom` 直到内容超过阈值或后端没数据，避免"短列表 + 高容器"场景 sentinel 一直卡在 `isIntersecting=true`、后续不再触发的问题。
+
+## 多 section 与 header
+
+```tsx
+<InfiniteScrollView<Message>
+  sections={[
+    { key: "today", getItemKey: (m) => m.id, fetch: fetchToday, marginBottom: 16 },
+    { key: "yesterday", getItemKey: (m) => m.id, fetch: fetchYesterday, marginTop: 16 },
+  ]}
+  renderHeader={(key, { collapsed, collapsible, toggle }) => (
+    <div className="bg-background sticky top-0 px-4 py-2 text-sm font-medium">
+      {key === "today" ? "今天" : "昨天"}
+      {collapsible && <button onClick={toggle}>{collapsed ? "展开" : "折叠"}</button>}
+    </div>
+  )}
+  renderItem={(item, { sectionKey }) => <MessageRow message={item} />}
+/>
+```
+
+传入 `renderHeader` 后每个 section 前会插入一个 sticky header 行；当前可视区域对应的 header 会以 `position: sticky; top: 0` 呈现（内部用 `rangeExtractor` 手动 pin 住 header index，保证滚出去时不消失）。
+
+## 从中间跳入（`initialCursor`）
+
+不从头开始加载，而是"打开时定位到某条消息"：
+
+```tsx
+<InfiniteScrollView<Message>
+  sections={[
+    {
+      key: "chat",
+      initialCursor: { before: pivotMessageId, after: pivotMessageId },
+      getItemKey: (m) => m.id,
+      fetch: async ({ before, after, limit, signal }) => {
+        // 首次：before 和 after 都是 pivot；组件后续会分别用两个方向的 sentinel 拉取
+        return await fetchMessages({ before, after, limit, signal });
+      },
+    },
+  ]}
+  renderItem={(m) => <MessageRow message={m} />}
+/>
+```
+
+传了 `initialCursor` 后，`hasMoreTop` 首次为 `true`——顶部 sentinel 也会挂载，用户往上滚会触发 `loadTop`。组件同时会在 top-prepend 后做 scroll-anchor 修正：commit 前后测量 `scrollHeight` 差值，`scrollBy` 补偿，保证用户视线里的内容不跳。
+
+## 常用注意点
+
+- **`getItemKey` 必须稳定**：它同时用作 virtualizer 的 item key、reducer 里的 dedupe 依据和游标。基于业务 id 生成；不要用数组下标或 `Math.random`。
+- **`limit` 不宜太小**：`items.length === limit` 是"还有更多"的判定条件；如果后端偶尔返回小于 `limit` 的一页但其实还有数据，会被判定为到底。
+- **`refresh(key)` 会 abort 该 section 所有 in-flight 请求并从初始 cursor 重来**：适合"下拉刷新"或外部数据变化后强制重拉。
+- **`showWhenEmpty: false` 的 section 只在有数据时可见**：适合按分组展示、空组不占位的场景。
+- **不要给内部滚动容器加水平 overflow**：默认只做 `overflow-y-auto`；虚拟化基于纵向布局。
