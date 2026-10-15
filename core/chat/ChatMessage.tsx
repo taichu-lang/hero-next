@@ -1,6 +1,6 @@
 "use client";
 
-import clsx from "clsx";
+import { cn } from "@heroui/styles";
 import { ChatMessageCopyAction } from "./Action";
 import { ChatAlign, Role } from "./type";
 
@@ -45,7 +45,7 @@ export interface ChatMessageBubbleProps {
 export function ChatMessageBubble({ children, variant = "ghost", radius = "md" }: ChatMessageBubbleProps) {
   return (
     <div
-      className={clsx("min-w-0 text-sm", {
+      className={cn("min-w-0 text-sm", {
         "bg-default w-fit max-w-[max(80%,280px)] px-3.5 py-2.5": variant === "filled",
         "w-full bg-transparent": variant === "ghost",
         "rounded-lg": radius === "sm",
@@ -73,7 +73,7 @@ export function ChatMessageMetadata({
 }: ChatMessageMetadataProps) {
   return (
     <div
-      className={clsx("flex items-center", { sm: "gap-1", md: "gap-2", lg: "gap-3" }[spacing], {
+      className={cn("flex items-center", { sm: "gap-1", md: "gap-2", lg: "gap-3" }[spacing], {
         "opacity-0 transition-opacity duration-150 motion-reduce:transition-none": reveal === "hover",
         "group-focus-within/message:opacity-100 group-hover/message:opacity-100": reveal === "hover",
         "focus-within:opacity-100 pointer-coarse:opacity-100": reveal === "hover",
@@ -100,7 +100,7 @@ export function ChatMessage({ role, align, spacing = "md", children }: ChatMessa
       role="group"
       // pb-x: gap between messages.
       // gap-x: gap between bubble and metadata.
-      className={clsx(
+      className={cn(
         "group/message flex w-full flex-col pb-4 text-sm",
         { sm: "gap-1", md: "gap-2", lg: "gap-3" }[spacing],
         {

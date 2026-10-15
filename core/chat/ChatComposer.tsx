@@ -1,7 +1,6 @@
 "use client";
 
-import { Button, ButtonProps } from "@heroui/react";
-import clsx from "clsx";
+import { Button, ButtonProps, cn } from "@heroui/react";
 import { ArrowUpIcon, CircleXIcon, TriangleAlertIcon } from "lucide-react";
 import { Suspense } from "react";
 import {
@@ -69,7 +68,7 @@ function ChatComposerStatus({ type, message }: ComposerStatus) {
 
   return (
     <div
-      className={clsx("-mt-7 flex items-center gap-2 rounded-b-3xl px-4 pt-10 pb-3 text-xs", {
+      className={cn("-mt-7 flex items-center gap-2 rounded-b-3xl px-4 pt-10 pb-3 text-xs", {
         "bg-warning-soft text-warning-soft-foreground": warning,
         "bg-danger-soft text-danger-soft-foreground": error,
       })}
@@ -87,14 +86,8 @@ export function ChatComposer({ disabled = false, input, onSubmit, ...props }: Ch
   return (
     // Tiptap's `useEditor` reads `Math.random()` during render, which Next.js refuses to
     // prerender; the Suspense boundary streams the editor in at request time instead.
-    <Suspense
-      fallback={<div className={clsx("bg-background-secondary h-28 w-full shadow-inner", radius)} />}
-    >
-      <ChatComposerProvider
-        disabled={disabled}
-        placeholder={input?.placeholder}
-        onSubmit={onSubmit}
-      >
+    <Suspense fallback={<div className={cn("bg-background-secondary h-28 w-full shadow-inner", radius)} />}>
+      <ChatComposerProvider disabled={disabled} placeholder={input?.placeholder} onSubmit={onSubmit}>
         <ChatComposerLayout disabled={disabled} {...props} />
       </ChatComposerProvider>
     </Suspense>
@@ -113,10 +106,10 @@ function ChatComposerLayout({
   const { isEmpty, submit } = useChatComposer();
 
   return (
-    <div className={clsx("bg-background-secondary flex w-full flex-col shadow-inner", radius)}>
+    <div className={cn("bg-background-secondary flex w-full flex-col shadow-inner", radius)}>
       {drawer && <ChatComposerDrawer>{drawer}</ChatComposerDrawer>}
       <div
-        className={clsx("flex flex-1 flex-col gap-2 p-3", radius, {
+        className={cn("flex flex-1 flex-col gap-2 p-3", radius, {
           "hover:outline-segment hover:outline": elevation === "low",
           "shadow-none": elevation === "none",
         })}

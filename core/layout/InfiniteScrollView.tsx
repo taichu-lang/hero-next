@@ -1,7 +1,7 @@
 "use client";
 
+import { cn } from "@heroui/styles";
 import { defaultRangeExtractor, Range, useVirtualizer } from "@tanstack/react-virtual";
-import clsx from "clsx";
 import { Loading } from "hero-next/effects";
 import {
   ReactNode,
@@ -829,7 +829,7 @@ export function InfiniteScrollView<T>({
   const totalSize = virtualizer.getTotalSize();
 
   return (
-    <div ref={setScrollRef} className={clsx("relative overflow-y-auto", className)}>
+    <div ref={setScrollRef} className={cn("relative overflow-y-auto", className)}>
       <div
         style={{
           height: `${totalSize}px`,

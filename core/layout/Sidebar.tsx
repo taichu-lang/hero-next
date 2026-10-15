@@ -1,16 +1,15 @@
 "use client";
 
-import { Button, Drawer, Link, ScrollShadow, useMediaQuery, useOverlayState } from "@heroui/react";
-import clsx from "clsx";
+import { Button, cn, Drawer, ScrollShadow, useMediaQuery, useOverlayState } from "@heroui/react";
 import { PanelLeftCloseIcon } from "lucide-react";
-import NextLink from "next/link";
-import type { AnchorHTMLAttributes, DetailedHTMLProps, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Item } from "./Item";
 
 const MOBILE_BREAKPOINT = 768;
 const COLLAPSE_BREAKPOINT = 1024;
 const EXPANDED_WIDTH = 280;
-const COLLAPSED_WIDTH = 72;
+const COLLAPSED_WIDTH = 68;
 
 interface SidebarContextValue {
   isMobile: boolean;
@@ -111,7 +110,7 @@ export function Sidebar({
             <Drawer.Content placement="left">
               <Drawer.Dialog
                 aria-label="Sidebar"
-                className={clsx("flex h-full w-[280px] max-w-[85vw] flex-col", className)}
+                className={cn("flex h-full w-[280px] max-w-[85vw] flex-col", className)}
               >
                 {children}
               </Drawer.Dialog>
@@ -125,7 +124,7 @@ export function Sidebar({
   return (
     <SidebarContext.Provider value={context}>
       <aside
-        className={clsx(
+        className={cn(
           "border-default flex h-screen flex-col border-r",
           "transition-[width] duration-300 ease-in-out motion-reduce:transition-none",
           className,
@@ -145,9 +144,7 @@ export interface SidebarHeaderProps {
 
 Sidebar.Header = function SidebarHeader({ children, className }: SidebarHeaderProps) {
   return (
-    <div className={clsx("border-default flex h-14 shrink-0 items-center gap-2 px-3", className)}>
-      {children}
-    </div>
+    <div className={cn("border-default flex h-14 shrink-0 items-center gap-2 px-3", className)}>{children}</div>
   );
 };
 
@@ -159,7 +156,7 @@ export interface SidebarBodyProps {
 Sidebar.Body = function SidebarBody({ children, className }: SidebarBodyProps) {
   return (
     <ScrollShadow className="min-h-0 flex-1" orientation="vertical">
-      <nav className={clsx("flex flex-col gap-1 p-2", className)}>{children}</nav>
+      <nav className={cn("flex flex-col gap-1 p-2", className)}>{children}</nav>
     </ScrollShadow>
   );
 };
@@ -171,7 +168,7 @@ export interface SidebarFooterProps {
 
 Sidebar.Footer = function SidebarFooter({ children, className }: SidebarFooterProps) {
   return (
-    <div className={clsx("border-default mt-auto flex shrink-0 items-center gap-2 border-t p-1.5", className)}>
+    <div className={cn("border-default mt-auto flex shrink-0 items-center gap-2 border-t p-1.5", className)}>
       {children}
     </div>
   );
@@ -181,89 +178,35 @@ export interface SidebarItemProps {
   children: ReactNode;
   /** Destination URL. When set, the item renders as a Link. */
   href?: string;
-  /** Fired when the item is activated. Ignored when `href` is set and the link navigates. */
-  onClick?: () => void;
   icon?: ReactNode;
   isActive?: boolean;
   disabled?: boolean;
-  className?: string;
 }
 
 Sidebar.Item = function SidebarItem({
   children,
   href,
-  onClick,
   icon,
   isActive = false,
   disabled = false,
-  className: classNameProp,
 }: SidebarItemProps) {
   const { isCollapsed, isMobile, closeMobile } = useSidebar();
 
   const handleActivate = () => {
-    onClick?.();
     if (isMobile) closeMobile();
   };
 
-  const label = (
-    <span
-      className={clsx(
-        "overflow-hidden whitespace-nowrap transition-[opacity,width] duration-300 ease-in-out motion-reduce:transition-none",
-        isCollapsed && !isMobile ? "w-0 opacity-0" : "w-full opacity-100",
-      )}
-    >
-      {children}
-    </span>
-  );
-
-  const className = clsx(
-    "w-full group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2 text-sm text-foreground outline-none transition-colors  ",
-    "data-[hovered=true]:bg-default data-[pressed=true]:bg-default data-[focus-visible=true]:ring-2 data-[focus-visible=true]:ring-focus ",
-    isActive && "bg-default font-medium",
-    classNameProp,
-  );
-
-  if (href) {
-    return (
-      <Link
-        aria-current={isActive ? "page" : undefined}
-        className={clsx(className, "no-underline")}
-        href={href}
-        isDisabled={disabled}
-        onPress={handleActivate}
-        render={(props) => {
-          const { ref, ...domProps } = props as DetailedHTMLProps<
-            AnchorHTMLAttributes<HTMLAnchorElement>,
-            HTMLAnchorElement
-          >;
-
-          return <NextLink {...domProps} ref={ref} href={href} />;
-        }}
-      >
-        {icon}
-        {label}
-      </Link>
-    );
-  }
-
   return (
-    <Button
-      aria-current={isActive ? "true" : undefined}
-      // - Override HeroUI Button's default `justify-center` so content stays left-aligned; otherwise it
-      //   re-centers mid-transition as the sidebar width and label width animate together.
-      // - Use `transform-none` to disable the pressed scale transform so this matches the Link branch above,
-      //   which has no press animation. Can't use `scale-100`.
-      className={clsx(
-        className,
-        "justify-start text-start active:transform-none data-[pressed]:transform-none",
-      )}
-      isDisabled={disabled}
-      variant="ghost"
-      onPress={handleActivate}
+    <Item
+      href={href}
+      isActive={isActive}
+      icon={icon}
+      disabled={disabled}
+      onClick={handleActivate}
+      className={isCollapsed ? "w-fit self-center" : ""}
     >
-      {icon}
-      {label}
-    </Button>
+      <Item.Content visible={isMobile || !isCollapsed}>{children}</Item.Content>
+    </Item>
   );
 };
 
@@ -272,7 +215,7 @@ export interface SidebarTriggerProps {
   "aria-label"?: string;
 }
 
-Sidebar.Trigger = function SidebarTrigger({
+Sidebar.Toggler = function SidebarToggler({
   className,
   "aria-label": ariaLabel = "Toggle sidebar",
 }: SidebarTriggerProps) {
@@ -281,7 +224,7 @@ Sidebar.Trigger = function SidebarTrigger({
   return (
     <Button
       aria-label={ariaLabel}
-      className={clsx(className, "shrink-0")}
+      className={cn(className, "shrink-0")}
       isIconOnly
       variant="ghost"
       onPress={isMobile ? toggleMobile : toggleCollapsed}

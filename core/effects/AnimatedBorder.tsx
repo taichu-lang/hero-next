@@ -1,4 +1,4 @@
-import clsx from "clsx";
+import { cn } from "@heroui/styles";
 
 export function AnimatedBorder({
   children,
@@ -13,7 +13,7 @@ export function AnimatedBorder({
 }) {
   return (
     <div
-      className={clsx(className)}
+      className={cn(className)}
       style={{
         animation: `rotate-border ${duration}s linear infinite`,
         border: `${borderWidth}px solid transparent`,

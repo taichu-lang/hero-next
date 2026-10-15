@@ -1,7 +1,7 @@
 "use client";
 
+import { cn } from "@heroui/styles";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import clsx from "clsx";
 import {
   ChatMessage,
   ChatMessageBubble,
@@ -345,7 +345,7 @@ export function ChatScrollArea({ children, className }: { children: React.ReactN
   return (
     <div
       ref={setContainer}
-      className={clsx("flex h-full flex-col overflow-y-auto", className)}
+      className={cn("flex h-full flex-col overflow-y-auto", className)}
       style={{ overflowAnchor: "none" }}
     >
       <ChatContextProvider key={pathname} scroll={container}>
