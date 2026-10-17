@@ -5,6 +5,7 @@ import { CopyCheckIcon, CopyIcon } from "lucide-react";
 import { useState } from "react";
 import { copyToClipboard } from "../utils";
 import { useChatMessageContext } from "./ChatMessageContext";
+import { CollectMessageContents } from "./type";
 
 function ActionButton(props: ButtonProps) {
   return <Button isIconOnly variant="ghost" {...props}></Button>;
@@ -14,7 +15,7 @@ export function ChatMessageCopyAction() {
   const { message } = useChatMessageContext();
   const [copied, setCopied] = useState<boolean>(false);
 
-  if (!message.content) {
+  if (message.contents.length === 0) {
     return null;
   }
 
@@ -23,7 +24,8 @@ export function ChatMessageCopyAction() {
       return;
     }
 
-    await copyToClipboard(message.content);
+    const text = CollectMessageContents(message);
+    await copyToClipboard(text);
     setCopied(true);
     setTimeout(() => {
       setCopied(false);

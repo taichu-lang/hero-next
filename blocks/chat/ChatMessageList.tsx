@@ -8,6 +8,7 @@ import {
   ChatMessageContextProvider,
   ChatMessageMetadata,
   Message,
+  TextContent,
   useChatMessageContext,
 } from "hero-next/chat";
 import { usePathname } from "next/navigation";
@@ -108,7 +109,7 @@ export function ChatMessageList({
     },
     [streamingMessage, messages],
   );
-  const getItemKey = useCallback((index: number) => getItem(index).message_id, [getItem]);
+  const getItemKey = useCallback((index: number) => getItem(index).id, [getItem]);
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
@@ -245,7 +246,7 @@ export function ChatMessageList({
 
     // Resolve the anchor on every run: tracking it by message id means loading older messages, which shifts
     // every index, doesn't strand it on a different message.
-    const anchorIndex = messages.findIndex((m) => m.message_id === anchor.id);
+    const anchorIndex = messages.findIndex((m) => m.id === anchor.id);
     if (anchorIndex < 0) return;
 
     // getTotalSize() refreshes the measurements that measurementsCache reads.
@@ -355,31 +356,45 @@ export function ChatScrollArea({ children, className }: { children: React.ReactN
   );
 }
 
+function UserTextContent({ text }: TextContent) {
+  return (
+    <Streamdown
+      controls={false}
+      linkSafety={{ enabled: false }}
+      components={{
+        // Skill
+        a: ({ href, children, ...props }) => (
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className="text-warning outline-warning rounded-full px-2 py-0.75 outline-1 -outline-offset-1"
+            {...props}
+          >
+            {children}
+          </a>
+        ),
+      }}
+    >
+      {text}
+    </Streamdown>
+  );
+}
+
 function UserMessage() {
-  const { message } = useChatMessageContext();
+  const {
+    message: { id, contents },
+  } = useChatMessageContext();
   return (
     <ChatMessage role="user">
       <ChatMessageBubble variant="filled" radius="lg">
-        <Streamdown
-          controls={false}
-          linkSafety={{ enabled: false }}
-          components={{
-            // Skill
-            a: ({ href, children, ...props }) => (
-              <a
-                href={href}
-                target="_blank"
-                rel="noreferrer"
-                className="text-warning outline-warning rounded-full px-2 py-0.75 outline-1 -outline-offset-1"
-                {...props}
-              >
-                {children}
-              </a>
-            ),
-          }}
-        >
-          {message.content}
-        </Streamdown>
+        {contents.map((c, idx) => {
+          if (c.type === "text") {
+            return <UserTextContent key={`${id}-${idx}`} {...c} />;
+          }
+
+          return null;
+        })}
       </ChatMessageBubble>
       <ChatMessageMetadata reveal="hover" />
     </ChatMessage>
@@ -387,14 +402,31 @@ function UserMessage() {
 }
 
 function AssistantMessage({ streaming = false }: { streaming?: boolean }) {
-  const { message } = useChatMessageContext();
+  const {
+    message: { id, contents },
+  } = useChatMessageContext();
 
   return (
     <ChatMessage role="assistant">
       <ChatMessageBubble>
-        <Streamdown controls={false} isAnimating={streaming} linkSafety={{ enabled: false }}>
-          {message.content}
-        </Streamdown>
+        {contents.map((c, idx) => {
+          switch (c.type) {
+            case "text":
+              return (
+                <Streamdown
+                  key={`${id}-${idx}`}
+                  controls={false}
+                  isAnimating={streaming}
+                  linkSafety={{ enabled: false }}
+                >
+                  {c.text}
+                </Streamdown>
+              );
+
+            default:
+              return null;
+          }
+        })}
       </ChatMessageBubble>
       {streaming || <ChatMessageMetadata />}
     </ChatMessage>

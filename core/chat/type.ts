@@ -2,14 +2,6 @@ export type Role = "user" | "assistant";
 
 export type ChatAlign = "start" | "end" | "stretch";
 
-export interface Message {
-  message_id: string;
-  role: Role;
-  content: string;
-  interrupted?: boolean;
-  hasError?: boolean;
-}
-
 export interface TextContent {
   type: "text";
   text: string;
@@ -24,10 +16,15 @@ export interface UsageContent {
 
 export type MessageContent = TextContent | UsageContent;
 
-export interface ResponseChunk {
+export interface BaseMessage {
   id: string;
   role: Role;
   contents: MessageContent[];
+}
+
+export interface Message extends BaseMessage {
+  interrupted?: boolean;
+  hasError?: boolean;
 }
 
 // Key fields:
@@ -39,3 +36,10 @@ export type Skill = {
   version?: string;
   installation?: string;
 };
+
+export function CollectMessageContents(message: BaseMessage): string {
+  return message.contents
+    .filter((content) => content.type === "text")
+    .map((content) => content.text)
+    .join("");
+}

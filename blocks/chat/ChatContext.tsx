@@ -1,8 +1,8 @@
-import { Message } from "hero-next/chat";
+import { CollectMessageContents, Message } from "hero-next/chat";
 import { createContext, useContext, useEffect, useState } from "react";
 import { createStore, StoreApi, useStore } from "zustand";
 
-type ChatStatus = "idle" | "sending" | "streaming";
+type ChatStatus = "loading" | "idle" | "sending" | "streaming";
 type StopReason = "interrupted" | "error" | "done";
 
 export interface ChatContextValue {
@@ -27,7 +27,7 @@ export interface ChatContextValue {
 
   addUserMessage: (message: Message) => void;
 
-  onStream: (messageID: string, chunk: string) => void;
+  onStream: (id: string, chunk: string) => void;
 
   // The streaming might be stopped in three cases:
   //
@@ -75,15 +75,19 @@ const createChatStore = (scroll: HTMLDivElement | null) =>
       }));
     },
 
-    onStream: (messageID: string, chunk: string) =>
+    onStream: (id: string, chunk: string) =>
       set((state) => {
-        const lastMessage = state.streamingMessage || { content: "", message_id: "", role: "assistant" };
+        const lastMessage = state.streamingMessage || {
+          contents: [{ type: "text", text: "" }],
+          id: "",
+          role: "assistant",
+        };
 
         return {
           streamingMessage: {
             ...lastMessage,
-            content: lastMessage.content + chunk,
-            message_id: messageID,
+            id,
+            contents: [{ type: "text", text: CollectMessageContents(lastMessage) + chunk }],
           },
         };
       }),
