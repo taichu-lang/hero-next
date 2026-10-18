@@ -1,3 +1,5 @@
+"use client";
+
 import { Key, ListBox, Select } from "@heroui/react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";

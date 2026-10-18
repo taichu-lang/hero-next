@@ -1,7 +1,7 @@
 "use client";
 
-import { Button, cn, Link } from "@heroui/react";
-import NextLink from "next/link";
+import { Button, cn, Link as HeroLink } from "@heroui/react";
+import { Link } from "hero-next/i18n/navigation";
 import { AnchorHTMLAttributes, createContext, DetailedHTMLProps, ReactNode, useContext } from "react";
 
 interface ItemContextValue {
@@ -51,7 +51,7 @@ export function Item({
   if (href) {
     return (
       <ItemContext.Provider value={{ isActive }}>
-        <Link
+        <HeroLink
           aria-current={isActive ? "page" : undefined}
           className={cn(className, "no-underline")}
           href={href}
@@ -63,12 +63,12 @@ export function Item({
               HTMLAnchorElement
             >;
 
-            return <NextLink {...domProps} ref={ref} href={href} />;
+            return <Link {...domProps} ref={ref} href={href} />;
           }}
         >
           {icon}
           {children}
-        </Link>
+        </HeroLink>
       </ItemContext.Provider>
     );
   }

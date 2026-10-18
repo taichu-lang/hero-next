@@ -1,3 +1,5 @@
+"use client";
+
 import { CollectMessageContents, Message } from "hero-next/chat";
 import { createContext, useContext, useEffect, useState } from "react";
 import { createStore, StoreApi, useStore } from "zustand";
