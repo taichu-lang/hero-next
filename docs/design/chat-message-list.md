@@ -134,8 +134,6 @@ below = scrollHeight - (listTop + total + spacer 当前实际高度)
 
 ### 3.4 锚点用 message_id 追踪，不用 index
 
-`prependMessage`（加载历史）会让所有 index 平移。所以 `stickRef` 里存 `{ index, key }`，第一次能取到消息时把 `key` 填成 `message_id`，之后每次都按 key 反查 index。
-
 `key` 必须**惰性**解析：`stickToMessage` 是在 `addUserMessage` 之后的同一个事件里调用的，此时组件闭包里的 `messages` 还是上一次渲染的数组，拿不到新消息。放到 layout effect 里解析，那时新列表已经 commit。
 
 ---

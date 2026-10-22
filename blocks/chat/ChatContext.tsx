@@ -1,11 +1,17 @@
 "use client";
 
-import { CollectMessageContents, Message } from "hero-next/chat";
+import {
+  ApplyToolCallResults,
+  CollectMessageContents,
+  MergeToolCallResults,
+  Message,
+  ToolCallContent,
+  ToolResultContent,
+} from "hero-next/chat";
 import { createContext, useContext, useEffect, useState } from "react";
 import { createStore, StoreApi, useStore } from "zustand";
 
-type ChatStatus = "loading" | "idle" | "sending" | "streaming";
-type StopReason = "interrupted" | "error" | "done";
+type ChatStatus = "loading" | "idle" | "sending" | "streaming" | "error" | "interrupted";
 
 export interface ChatContextValue {
   /**
@@ -25,29 +31,39 @@ export interface ChatContextValue {
    */
   streamingMessage: Message | null;
 
+  /**
+   * Number of tool calls that have been requested but not finished yet in the current turn.
+   */
+  runningToolCalls: number;
+
   setStatus: (status: ChatStatus) => void;
 
-  addUserMessage: (message: Message) => void;
+  /**
+   * Add user input, the message id will be generated. The server preprocesses the user input, so more than one
+   * message might be received.
+   */
+  addUserMessage: (messages: Message[]) => void;
 
+  /**
+   * The generation starts. It belongs to each iteration.
+   */
   onStream: (id: string, chunk: string) => void;
 
-  // The streaming might be stopped in three cases:
-  //
-  // - User interrupted. In this case, `message` is null.
-  // - This turn is completed, `message` is the completed message of this turn.
-  // - Something error, ex: the connection is closed.
-  //
-  stopStreaming: (reason?: StopReason, message?: Message) => void;
+  /**
+   * Current iteration done.
+   */
+  onStreamDone: (message: Message) => void;
 
   /**
-   * Add new messages.
+   * Tools start running. Tools of one iteration run in parallel.
    */
-  appendMessage: (messages: Message[]) => void;
+  onToolCall: (calls: ToolCallContent) => void;
 
   /**
-   * Add previous messages.
+   * Attach streamed tool results to the matching ToolCallContent in `messages`, so the tool call card can show
+   * the outcome. Results without a matching call are ignored.
    */
-  prependMessage: (messages: Message[]) => void;
+  onToolResult: (results: ToolResultContent[]) => void;
 
   /**
    * Hydrate the chat context with historical messages.
@@ -61,18 +77,27 @@ const createChatStore = (scroll: HTMLDivElement | null) =>
     status: "idle",
     messages: [],
     streamingMessage: null,
+    runningToolCalls: 0,
 
-    setStatus: (status) => {
-      set({ status });
+    setStatus: (s) => {
+      // A turn that ends (or fails) has no running tools anymore.
+      if (s === "idle" || s === "error" || s === "interrupted") {
+        set({
+          status: s,
+          runningToolCalls: 0,
+        });
+      } else {
+        set({ status: s as ChatStatus });
+      }
     },
 
-    addUserMessage: (message: Message) => {
+    addUserMessage: (messages: Message[]) => {
       if (get().status !== "sending") {
         throw new Error("invalid message order, chat context should be sending.");
       }
 
       set((state) => ({
-        messages: [...state.messages, message],
+        messages: [...state.messages, ...messages],
         status: "streaming",
       }));
     },
@@ -85,7 +110,10 @@ const createChatStore = (scroll: HTMLDivElement | null) =>
           role: "assistant",
         };
 
+        // The model is called only after all tools finish, so the first chunk means no tool is running.
         return {
+          status: "streaming",
+          runningToolCalls: 0,
           streamingMessage: {
             ...lastMessage,
             id,
@@ -94,42 +122,26 @@ const createChatStore = (scroll: HTMLDivElement | null) =>
         };
       }),
 
-    // Client uses AbortController to interrupt the streaming. Once the AbortController is aborted, client drops
-    // the connection, which means client does not receive any more data from the server. However, the server
-    // might not close the connection to llm provider immediately. We can not get the balance after abort the
-    // connection, as there is a time delay between the aborting and usage calculation in the server side. The
-    // balance should be updated after the next turn.
-    stopStreaming: (reason?: StopReason, message?: Message) =>
+    onStreamDone: (message: Message) =>
       set((state) => {
-        const streamingMessage = state.streamingMessage;
-        if (!streamingMessage) {
-          return {};
-        }
-
-        switch (reason) {
-          case "interrupted":
-            streamingMessage.interrupted = true;
-            break;
-
-          case "error":
-            streamingMessage.hasError = true;
-            break;
-
-          default:
-            break;
-        }
-
         return {
-          messages: [...state.messages, message || { ...streamingMessage }],
+          messages: [...state.messages, message],
           streamingMessage: null,
         };
       }),
 
-    appendMessage: (messages) => set((state) => ({ messages: [...state.messages, ...messages] })),
+    onToolCall: () => set((state) => ({ runningToolCalls: state.runningToolCalls + 1 })),
 
-    prependMessage: (messages) => set((state) => ({ messages: [...messages, ...state.messages] })),
+    onToolResult: (results) =>
+      set((state) => {
+        const messages = ApplyToolCallResults(state.messages, results);
+        return {
+          runningToolCalls: Math.max(0, state.runningToolCalls - results.length),
+          ...(messages ? { messages } : {}),
+        };
+      }),
 
-    hydrate: (messages) => set({ messages }),
+    hydrate: (messages) => set({ messages: MergeToolCallResults(messages) }),
   }));
 
 const ChatContext = createContext<StoreApi<ChatContextValue> | null>(null);

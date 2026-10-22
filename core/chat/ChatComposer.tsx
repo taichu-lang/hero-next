@@ -18,6 +18,7 @@ interface ComposerStatus {
 export interface ChatComposerProps {
   /**
    * The drawer content, such as the uploaded files, manual confirmation, etc.
+   * You can use ChatComposerDrawer to wrap the content.
    */
   drawer?: React.ReactNode;
 
@@ -39,6 +40,12 @@ export interface ChatComposerProps {
    */
   footActions?: React.ReactNode;
 
+  /**
+   * Slot: right-aligned contextual info in the footer (ex: model preference).
+   * Note that the right area has the send button by default.
+   */
+  footContext?: React.ReactNode;
+
   disabled?: boolean;
 
   streaming?: boolean;
@@ -51,13 +58,14 @@ export interface ChatComposerProps {
 }
 
 // TODO(Leo): add collapsed state.
-function ChatComposerDrawer({ children }: { children: React.ReactNode }) {
+export function ChatComposerDrawer({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className="flex flex-col px-4 py-3">
+    // Padding is same as EditorContent.
+    <div className="flex flex-col p-3">
       <div className="flex h-5 w-full cursor-pointer justify-center">
         <div className="bg-background-inverse/80 h-0.5 w-4 rounded-full"></div>
       </div>
-      <div className="flex flex-wrap">{children}</div>
+      <div className={cn("flex flex-wrap", className)}>{children}</div>
     </div>
   );
 }
@@ -100,6 +108,7 @@ function ChatComposerLayout({
   headerActions,
   headerContext,
   footActions,
+  footContext,
   status,
   disabled,
 }: Omit<ChatComposerProps, "input" | "onSubmit">) {
@@ -107,24 +116,27 @@ function ChatComposerLayout({
 
   return (
     <div className={cn("bg-background-secondary flex w-full flex-col shadow-inner", radius)}>
-      {drawer && <ChatComposerDrawer>{drawer}</ChatComposerDrawer>}
+      {/* Do not wrap drawer in ChatComposerDrawer by default, as it might be a component that returns null. */}
+      {/* Padding is same as input area. */}
+      {drawer && <div className="px-3">{drawer}</div>}
       <div
         className={cn("flex flex-1 flex-col gap-2 p-3", radius, {
           "hover:outline-segment hover:outline": elevation === "low",
           "shadow-none": elevation === "none",
         })}
       >
-        <div className="flex min-h-0 items-center">
+        <div className="flex min-h-0 items-center gap-2">
           {headerActions}
           <div className="flex-1" />
           {headerContext}
         </div>
         <ChatComposerInput />
-        <div className="flex min-h-0 items-center">
+        <div className="flex min-h-0 items-center gap-2">
           {footActions}
           <div className="flex-1" />
+          {footContext}
           <ChatComposeButton variant="primary" onClick={submit} isDisabled={isEmpty || disabled}>
-            <ArrowUpIcon className="h-4 w-4" />
+            <ArrowUpIcon className="size-4" />
           </ChatComposeButton>
         </div>
       </div>

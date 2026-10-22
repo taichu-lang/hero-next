@@ -101,7 +101,7 @@ export function ChatMessage({ role, align, spacing = "md", children }: ChatMessa
       // pb-x: gap between messages.
       // gap-x: gap between bubble and metadata.
       className={cn(
-        "group/message flex w-full flex-col pb-4 text-sm",
+        "group/message mb-2 flex w-full flex-col text-sm",
         { sm: "gap-1", md: "gap-2", lg: "gap-3" }[spacing],
         {
           "items-start": align === "start",

@@ -15,6 +15,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import { ChatContextProvider, useChatContext } from "./ChatContext";
+import { ChatToolCalls } from "./ChatToolCalls";
 
 // The pin logic reads and writes scrollTop, so it has to run before paint. The list never renders anything on
 // the server, but React still warns about useLayoutEffect there.
@@ -405,30 +406,29 @@ function AssistantMessage({ streaming = false }: { streaming?: boolean }) {
   const {
     message: { id, contents },
   } = useChatMessageContext();
+  const showMeta = !streaming && contents.some((c) => c.type === "text");
 
   return (
     <ChatMessage role="assistant">
-      <ChatMessageBubble>
-        {contents.map((c, idx) => {
-          switch (c.type) {
-            case "text":
-              return (
-                <Streamdown
-                  key={`${id}-${idx}`}
-                  controls={false}
-                  isAnimating={streaming}
-                  linkSafety={{ enabled: false }}
-                >
+      {contents.map((c, idx) => {
+        switch (c.type) {
+          case "text":
+            return (
+              <ChatMessageBubble key={`${id}-${idx}`}>
+                <Streamdown controls={false} isAnimating={streaming} linkSafety={{ enabled: false }}>
                   {c.text}
                 </Streamdown>
-              );
+              </ChatMessageBubble>
+            );
 
-            default:
-              return null;
-          }
-        })}
-      </ChatMessageBubble>
-      {streaming || <ChatMessageMetadata />}
+          case "tool_call":
+            return <ChatToolCalls key={c.id} {...c} />;
+
+          default:
+            return null;
+        }
+      })}
+      {showMeta && <ChatMessageMetadata />}
     </ChatMessage>
   );
 }
