@@ -1,3 +1,15 @@
+/*
+ * Streamdown's styles are Tailwind classes compiled into its dist bundle. Tailwind never scans
+ * node_modules on its own, so without this @source only the classes that happen to appear in other
+ * scanned files were generated — streamdown's intended block rhythm (`space-y-4` root, divider
+ * margins) silently never existed (see docs/design/streamdown-styles.md).
+ *
+ * Streamdown is hero-next's own dependency, so the directive lives here, with the path relative to
+ * hero-next itself: every app importing this file gets the full class set automatically, and the
+ * path survives changes in how apps lay out their node_modules.
+ */
+@source "../../node_modules/streamdown/dist/*.js";
+
 :root,
 .light,
 [data-theme="light"] {
@@ -79,6 +91,104 @@
     outline: 1px solid var(--color-warning);
     outline-offset: -1px;
   }
+}
+
+/*
+ * Streamdown code blocks.
+ *
+ * Streamdown nests a bordered body inside a bordered container, which renders as two stacked borders.
+ * Restyle it into a single HeroUI surface: a borderless `bg-default` rounded box like HeroUI's prose
+ * code, with the language label on a header strip separated by the same hairline HeroUI tables use.
+ * The `data-streamdown` attributes are Streamdown's public styling hooks.
+ *
+ * Deliberately NOT in a cascade layer: unlayered rules beat Tailwind's utilities layer, where
+ * Streamdown's own classes live. Moving these into a layer would let those classes win again.
+ */
+
+/* Block code: one surface, no borders. */
+[data-streamdown="code-block"] {
+  @apply bg-default-soft my-4 gap-0 overflow-hidden rounded-xl p-0;
+}
+
+/* Language label: header strip with a hairline, hidden for blocks without a language. */
+[data-streamdown="code-block-header"] {
+  @apply border-border/40 text-muted h-auto border-b px-4 py-2 text-xs;
+}
+
+[data-streamdown="code-block-header"]:has(span:empty) {
+  display: none;
+}
+
+[data-streamdown="code-block-header"] > span {
+  @apply ml-0;
+}
+
+/* Code area: transparent over the container surface, no second border. */
+[data-streamdown="code-block-body"] {
+  @apply rounded-none border-0 bg-transparent px-4 py-3 font-mono text-sm leading-relaxed;
+}
+
+[data-streamdown="code-block-body"] pre {
+  background: transparent;
+}
+
+/* Inline code: HeroUI typography code treatment. */
+[data-streamdown="inline-code"] {
+  @apply bg-default-soft text-foreground rounded-md px-1.5 py-0.5 font-mono text-sm;
+}
+
+/*
+ * Streamdown tables.
+ *
+ * Same double-border problem as code blocks: the wrapper and the inner scroll container each carry a
+ * border. Flatten to a single transparent bordered box — tables deliberately get no background — and
+ * follow HeroUI's table conventions: muted `text-xs` header cells with the short column separators,
+ * `separator/50` hairlines between rows. The inner scroll container has no `data-streamdown`
+ * attribute, so it is reached via `:has(> table)`. Same unlayered rule as the code block section.
+ */
+
+/* Wrapper: the single border, transparent background. */
+[data-streamdown="table-wrapper"] {
+  @apply border-border my-4 gap-0 overflow-hidden rounded-xl border bg-transparent p-0;
+}
+
+/* Scroll container: no second border. Keeps its own overflow and inline max-height. */
+[data-streamdown="table-wrapper"] > div:has(> [data-streamdown="table"]) {
+  @apply rounded-none border-0 bg-transparent;
+}
+
+/* Header/body hairline in HeroUI's separator color. */
+[data-streamdown="table"] {
+  @apply divide-border/40 w-full divide-y;
+}
+
+[data-streamdown="table-header"] {
+  @apply bg-transparent;
+}
+
+/* Header cells: HeroUI table column treatment. */
+[data-streamdown="table-header-cell"] {
+  @apply text-muted relative px-4 py-2.5 text-start text-xs font-medium whitespace-normal;
+}
+
+/* Short column separators between header cells, like HeroUI table columns. */
+[data-streamdown="table-header-cell"]::after {
+  content: "";
+  @apply bg-separator pointer-events-none absolute end-0 top-1/2 h-4 w-px -translate-y-1/2 rounded-sm;
+}
+
+[data-streamdown="table-header-cell"]:last-child:not(:only-child)::after {
+  content: none;
+}
+
+/* Row hairlines: HeroUI's separator color instead of the full-strength border token. */
+[data-streamdown="table-body"] {
+  @apply divide-border/40 divide-y;
+}
+
+/* Body cells: HeroUI table cell rhythm. */
+[data-streamdown="table-cell"] {
+  @apply px-4 py-3 align-middle text-sm;
 }
 
 :root {

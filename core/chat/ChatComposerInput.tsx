@@ -14,9 +14,9 @@ import {
   useEditorState,
 } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { HammerIcon } from "lucide-react";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef } from "react";
 import { Skill } from "./type";
-import { HammerIcon } from "lucide-react";
 
 export interface ChatComposerValue {
   /** Plain text of the input; skills are not included. */
@@ -80,8 +80,11 @@ function readValue(editor: Editor): ChatComposerValue {
   const markdown = editor.getText({
     textSerializers: {
       skill: ({ node }) => {
-        const { name, installation } = node.attrs;
-        return ` ${installation ? `[${name}](file://${installation})` : name} `;
+        const { name, source } = node.attrs;
+        // Using xml format rather than link in markdown, as those content can be customized based on the xml
+        // tag when rendering user input as markdown. Different category can use its special tag, ex: <command>,
+        // <file>.
+        return `<skill name="${name}" source="${source}"></skill>`;
       },
     },
   });

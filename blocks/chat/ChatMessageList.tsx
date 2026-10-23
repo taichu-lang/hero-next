@@ -1,5 +1,6 @@
 "use client";
 
+import { Typography } from "@heroui/react";
 import { cn } from "@heroui/styles";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
@@ -8,9 +9,9 @@ import {
   ChatMessageContextProvider,
   ChatMessageMetadata,
   Message,
-  TextContent,
   useChatMessageContext,
 } from "hero-next/chat";
+import { HammerIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
@@ -357,31 +358,6 @@ export function ChatScrollArea({ children, className }: { children: React.ReactN
   );
 }
 
-function UserTextContent({ text }: TextContent) {
-  return (
-    <Streamdown
-      controls={false}
-      linkSafety={{ enabled: false }}
-      components={{
-        // Skill
-        a: ({ href, children, ...props }) => (
-          <a
-            href={href}
-            target="_blank"
-            rel="noreferrer"
-            className="text-warning outline-warning rounded-full px-2 py-0.75 outline-1 -outline-offset-1"
-            {...props}
-          >
-            {children}
-          </a>
-        ),
-      }}
-    >
-      {text}
-    </Streamdown>
-  );
-}
-
 function UserMessage() {
   const {
     message: { id, contents },
@@ -391,7 +367,7 @@ function UserMessage() {
       <ChatMessageBubble variant="filled" radius="lg">
         {contents.map((c, idx) => {
           if (c.type === "text") {
-            return <UserTextContent key={`${id}-${idx}`} {...c} />;
+            return <Markdown key={`${id}-${idx}`}>{c.text}</Markdown>;
           }
 
           return null;
@@ -415,9 +391,7 @@ function AssistantMessage({ streaming = false }: { streaming?: boolean }) {
           case "text":
             return (
               <ChatMessageBubble key={`${id}-${idx}`}>
-                <Streamdown controls={false} isAnimating={streaming} linkSafety={{ enabled: false }}>
-                  {c.text}
-                </Streamdown>
+                <Markdown isAnimating={streaming}>{c.text}</Markdown>
               </ChatMessageBubble>
             );
 
@@ -430,5 +404,62 @@ function AssistantMessage({ streaming = false }: { streaming?: boolean }) {
       })}
       {showMeta && <ChatMessageMetadata />}
     </ChatMessage>
+  );
+}
+
+function Markdown({ children, isAnimating }: { children: string; isAnimating?: boolean }) {
+  return (
+    <Streamdown
+      controls={false}
+      linkSafety={{ enabled: false }}
+      isAnimating={isAnimating}
+      // Heading overrides replace streamdown's own heading components, so heading rhythm is set here
+      // and not inherited: room above (section break), tight below (title belongs to its content).
+      // Code blocks opt out of streamdown's default line numbers — the counter classes only render
+      // once its dist is scanned (see hero-next core/styles/base.css @source), and chat code reads
+      // cleaner without them, like HeroUI prose code.
+      lineNumbers={false}
+      allowedTags={{
+        // id, name are default tags.
+        skill: ["source"],
+      }}
+      components={{
+        h1: ({ children, ref, className }) => (
+          <Typography type="h1" ref={ref} className={cn(className, "mt-8 mb-3 text-2xl")} data-markdown="h1">
+            {children}
+          </Typography>
+        ),
+        h2: ({ children, ref, className }) => (
+          <Typography type="h2" ref={ref} className={cn(className, "mt-6 mb-2 text-xl")} data-markdown="h2">
+            {children}
+          </Typography>
+        ),
+        h3: ({ children, ref, className }) => (
+          <Typography type="h3" ref={ref} className={cn(className, "mt-6 mb-2 text-lg")} data-markdown="h3">
+            {children}
+          </Typography>
+        ),
+        // _temp5: `key` is not a prop.
+        p: ({ children, ref, className }) => (
+          <Typography type="body-sm" ref={ref} className={className} data-markdown="p">
+            {children}
+          </Typography>
+        ),
+        skill: ({ name, source }) => {
+          return (
+            <a
+              href={source as string}
+              className="text-warning hover:outline-warning mx-1 inline-flex items-center gap-0.5 rounded-full px-1.5 -outline-offset-1 hover:outline"
+              target="_blank"
+            >
+              <HammerIcon className="size-3.5" />
+              {name as string}
+            </a>
+          );
+        },
+      }}
+    >
+      {children}
+    </Streamdown>
   );
 }
