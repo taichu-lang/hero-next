@@ -4,18 +4,19 @@ import { Typography } from "@heroui/react";
 import { cn } from "@heroui/styles";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
+  ChatContextProvider,
   ChatMessage,
   ChatMessageBubble,
   ChatMessageContextProvider,
   ChatMessageMetadata,
   Message,
+  useChatContext,
   useChatMessageContext,
 } from "hero-next/chat";
 import { HammerIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
-import { ChatContextProvider, useChatContext } from "./ChatContext";
 import { ChatToolCalls } from "./ChatToolCalls";
 
 // The pin logic reads and writes scrollTop, so it has to run before paint. The list never renders anything on

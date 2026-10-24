@@ -1,9 +1,9 @@
 "use client";
 
 import { Button } from "@heroui/react";
+import { useChatContext } from "hero-next/chat";
 import { AnimatedBorder } from "hero-next/effects";
 import { ArrowDown } from "lucide-react";
-import { useChatContext } from "./ChatContext";
 
 function ButtonContainer({ children }: { children: React.ReactNode }) {
   const { streamingMessage } = useChatContext();

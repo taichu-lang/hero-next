@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, ButtonProps, cn } from "@heroui/react";
-import { ArrowUpIcon, CircleXIcon, TriangleAlertIcon } from "lucide-react";
+import { ArrowUpIcon, CircleXIcon, SquareIcon, TriangleAlertIcon } from "lucide-react";
 import { Suspense } from "react";
 import {
   ChatComposerInput,
@@ -9,6 +9,7 @@ import {
   ChatComposerValue,
   useChatComposer,
 } from "./ChatComposerInput";
+import { useChatContext } from "./ChatContext";
 
 interface ComposerStatus {
   type: "error" | "warning";
@@ -46,14 +47,21 @@ export interface ChatComposerProps {
    */
   footContext?: React.ReactNode;
 
+  /**
+   * Disable any interaction with the composer. Ex: no permission.
+   */
   disabled?: boolean;
 
-  streaming?: boolean;
-
-  status?: ComposerStatus;
+  statusBar?: ComposerStatus;
 
   input?: { placeholder?: string };
 
+  /**
+   * Called with the current input value on submit. The request's AbortController is not passed
+   * here: it lives in ChatContext (beginRequest/cancelRequest), whose lifetime is the chat page
+   * rather than this composer, so the cancel button keeps working even when the request was
+   * started by a composer instance that has since unmounted.
+   */
   onSubmit: (value: ChatComposerValue) => void;
 }
 
@@ -109,10 +117,14 @@ function ChatComposerLayout({
   headerContext,
   footActions,
   footContext,
-  status,
+  statusBar,
   disabled,
 }: Omit<ChatComposerProps, "input" | "onSubmit">) {
   const { isEmpty, submit } = useChatComposer();
+  // Cancel comes from ChatContext, not from the composer provider: the controller of the
+  // in-flight request is registered there by the request sender, so this button aborts the
+  // current conversation's request regardless of which composer instance started it.
+  const { status, cancelRequest } = useChatContext();
 
   return (
     <div className={cn("bg-background-secondary flex w-full flex-col shadow-inner", radius)}>
@@ -135,12 +147,18 @@ function ChatComposerLayout({
           {footActions}
           <div className="flex-1" />
           {footContext}
-          <ChatComposeButton variant="primary" onClick={submit} isDisabled={isEmpty || disabled}>
-            <ArrowUpIcon className="size-4" />
-          </ChatComposeButton>
+          {status === "idle" ? (
+            <ChatComposeButton variant="primary" onClick={submit} isDisabled={isEmpty || disabled}>
+              <ArrowUpIcon className="size-4" />
+            </ChatComposeButton>
+          ) : (
+            <ChatComposeButton variant="danger" onClick={cancelRequest}>
+              <SquareIcon className="size-4" />
+            </ChatComposeButton>
+          )}
         </div>
       </div>
-      {status && <ChatComposerStatus {...status} />}
+      {statusBar && <ChatComposerStatus {...statusBar} />}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 export { ChatComposeButton, ChatComposer, ChatComposerDrawer } from "./ChatComposer";
 export { useChatComposer, type ChatComposerValue } from "./ChatComposerInput";
+export { ChatContextProvider, useChatContext } from "./ChatContext";
 export { ChatMessage, ChatMessageBubble, ChatMessageMetadata } from "./ChatMessage";
 export { ChatMessageContextProvider, useChatMessageContext } from "./ChatMessageContext";
 export { ChatToolCall } from "./ChatToolCall";

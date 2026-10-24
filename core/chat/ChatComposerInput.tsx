@@ -21,7 +21,7 @@ import { Skill } from "./type";
 export interface ChatComposerValue {
   /** Plain text of the input; skills are not included. */
   text: string;
-  /** Text with each skill inlined at its position as `[name](installation)`, ready to render as markdown. */
+  /** Text with each skill inlined at its position as `<skill>` xml, ready to render as markdown. */
   markdown: string;
   /** Skills in the input, in document order. */
   skills: Skill[];
@@ -40,7 +40,12 @@ export interface ChatComposerContextValue {
   getValue: () => ChatComposerValue;
   addSkill: (skill: Skill) => void;
   clear: () => void;
-  /** Submit the current value (no-op if empty or disabled), then clear the input. */
+  /**
+   * Submit the current value (no-op if empty or disabled), then clear the input.
+   * Aborting the resulting request is not the composer's job: the request's AbortController
+   * lives in ChatContext (see `beginRequest`/`cancelRequest`), whose lifetime is the chat page
+   * rather than this component, so a request survives the composer instance that started it.
+   */
   submit: () => void;
 }
 
@@ -128,7 +133,7 @@ export function ChatComposerProvider({
       Placeholder.configure({ placeholder }),
       SkillNode,
     ],
-    editable: !disabled,
+    editable: true, // the editor is always on, control the sending trigger instead.
     editorProps: {
       attributes: {
         // `prose` caps the width at 65ch, which would override `w-full` and leave the input
@@ -155,10 +160,6 @@ export function ChatComposerProvider({
     },
     immediatelyRender: false,
   });
-
-  useEffect(() => {
-    editor?.setEditable(!disabled);
-  }, [editor, disabled]);
 
   const isEmpty =
     useEditorState({
@@ -189,6 +190,11 @@ export function ChatComposerProvider({
     if (value.isEmpty || disabled) {
       return;
     }
+
+    // No AbortController is created here: the request sender registers one in ChatContext
+    // (beginRequest), which also aborts any previous in-flight request. That keeps the
+    // controller's lifetime tied to the chat page instead of this provider instance, which
+    // unmounts when navigating away (ex: landing page -> conversation page).
     onSubmit(value);
     clear();
   }, [getValue, clear, disabled, onSubmit]);
