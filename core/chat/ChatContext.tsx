@@ -11,7 +11,31 @@ import {
 import { createContext, useContext, useEffect, useState } from "react";
 import { createStore, StoreApi, useStore } from "zustand";
 
-type ChatStatus = "loading" | "idle" | "sending" | "streaming";
+type ChatStatus = "loading" | "idle" | "sending" | "streaming" | "approval";
+
+// {@ Arguments of QuestionTool
+interface Option {
+  label: string;
+  description: string;
+}
+
+interface Question {
+  id: string;
+  header: string;
+  question: string;
+  options: Option[];
+}
+
+export interface QuestionToolArgs {
+  questions: Question[];
+}
+// @}
+
+export interface HumanConfirmation {
+  id: string;
+  name: string;
+  arguments: QuestionToolArgs;
+}
 
 export interface ChatContextValue {
   /**
@@ -48,6 +72,8 @@ export interface ChatContextValue {
    * ChatContextProvider instance, i.e. as long as one conversation page is mounted.
    */
   abortController: AbortController | null;
+
+  confirmation: HumanConfirmation[];
 
   setStatus: (status: ChatStatus) => void;
 
@@ -101,6 +127,8 @@ export interface ChatContextValue {
    * Hydrate the chat context with historical messages.
    */
   hydrate: (messages: Message[]) => void;
+
+  onConfirmation: (confirmation: HumanConfirmation[]) => void;
 }
 
 const createChatStore = (scroll: HTMLDivElement | null) =>
@@ -111,8 +139,15 @@ const createChatStore = (scroll: HTMLDivElement | null) =>
     streamingMessage: null,
     runningToolCalls: 0,
     abortController: null,
+    confirmation: [],
 
     setStatus: (s) => {
+      // The stream may close (turn.end) right after the agent asks for human confirmation;
+      // that must not dismiss the pending approval. It is cleared by answering or cancelRequest.
+      if (get().status === "approval") {
+        return;
+      }
+
       if (s === "idle") {
         set({
           status: s,
@@ -197,6 +232,10 @@ const createChatStore = (scroll: HTMLDivElement | null) =>
       }),
 
     hydrate: (messages) => set({ messages: MergeToolCallResults(messages) }),
+
+    onConfirmation: (confirmation: HumanConfirmation[]) => {
+      set({ confirmation, status: confirmation.length === 0 ? "idle" : "approval" });
+    },
   }));
 
 const ChatContext = createContext<StoreApi<ChatContextValue> | null>(null);

@@ -188,35 +188,52 @@ export function ChatMessageList({
     const release = () => {
       heldRef.current = false;
     };
+    // The composer sits inside the scroll container, so every keystroke while typing the next message
+    // bubbles here. Typing is not a scroll gesture; only keys aimed at the list itself release the pin.
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("input, textarea, [contenteditable]")) return;
+      release();
+    };
     const onScroll = () => {
       reportBottom();
+
+      const distance = scrollElement.scrollHeight - scrollElement.clientHeight - scrollElement.scrollTop;
+      const atBottom = distance <= BOTTOM_THRESHOLD;
 
       if (heldRef.current) {
         const applied = appliedRef.current;
         if (applied !== null && Math.abs(scrollElement.scrollTop - applied) > BOTTOM_THRESHOLD) {
-          release();
+          // A position we didn't write. In bottom mode, landing exactly on the end is the browser clamping
+          // scrollTop after a re-measure shrank the content (estimate vs. real row height, markdown
+          // reflow) — that's the pin being corrected, not a gesture, so keep holding and resync. Anything
+          // else is a user drag: release.
+          if (stickRef.current?.mode === "bottom" && atBottom) {
+            appliedRef.current = scrollElement.scrollTop;
+          } else {
+            release();
+          }
         }
-        return;
+        // No return after release: fall through so this same event can re-engage bottom mode.
       }
 
       // Bottom-following is the one mode that can be picked back up: scrolling down to the end again means the
       // user wants to keep watching it.
-      if (stickRef.current?.mode !== "bottom") return;
-      const distance = scrollElement.scrollHeight - scrollElement.clientHeight - scrollElement.scrollTop;
-      if (distance <= BOTTOM_THRESHOLD) {
+      if (!heldRef.current && stickRef.current?.mode === "bottom" && atBottom) {
         heldRef.current = true;
+        appliedRef.current = scrollElement.scrollTop;
       }
     };
     const opts = { passive: true } as const;
     scrollElement.addEventListener("wheel", release, opts);
     scrollElement.addEventListener("touchmove", release, opts);
-    scrollElement.addEventListener("keydown", release);
+    scrollElement.addEventListener("keydown", onKeyDown);
     scrollElement.addEventListener("scroll", onScroll, opts);
 
     return () => {
       scrollElement.removeEventListener("wheel", release);
       scrollElement.removeEventListener("touchmove", release);
-      scrollElement.removeEventListener("keydown", release);
+      scrollElement.removeEventListener("keydown", onKeyDown);
       scrollElement.removeEventListener("scroll", onScroll);
     };
   }, [scrollElement, reportBottom]);

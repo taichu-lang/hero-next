@@ -205,10 +205,20 @@ below = scrollHeight - (listTop + total + spacer 当前实际高度)
 
 钉住状态（`heldRef`）在以下任一情况下释放，之后列表恢复成普通滚动容器：
 
-- `wheel` / `touchmove` / `keydown`：明确的用户手势。程序化写 scrollTop **不会**触发这些事件，所以不会误伤。
+- `wheel` / `touchmove`：明确的用户手势。程序化写 scrollTop **不会**触发这些事件，所以不会误伤。
+- `keydown`：仅当按键不是发自可编辑元素。Composer 在滚动容器**内部**，打字时每个 `keydown` 都会冒泡到容器上——如果不过滤，"边流式输出边打下一条消息"就会把 bottom 跟随悄悄放掉。现在 `input / textarea / [contenteditable]` 里的按键被忽略。
 - `scroll` 事件中发现 scrollTop 与 `appliedRef`（我们最后写入的值）相差超过 `BOTTOM_THRESHOLD`：用于捕捉**拖动滚动条**，它不产生上面任何一个事件。依据是 scroll 事件每帧最多派发一次且总在引起它的写入之后，所以落在别处就说明是用户干的。
 
 只有 `bottom` 模式会自动重新接管：用户滚回底部 `BOTTOM_THRESHOLD` 以内时重新钉住。`message` 模式一旦释放就不再自动恢复，下次 `stickToMessage` 才会重置。
+
+### 踩过的坑：clamp 被误判成拖动，bottom 跟随在流式输出中悄悄死掉
+
+`bottom` 模式下 scrollTop 被我们钉在 `scrollHeight - clientHeight` 上，此时任何让内容**变矮**的重测量（估算 120 vs 实际行高、markdown reflow）都会让浏览器把 scrollTop 夹小并派发 scroll 事件。旧逻辑把这个事件当成"用户拖了滚动条"直接 `release()`，并且释放后立刻 `return`——同一个事件里"滚回底部就重新接管"的检查根本不会跑。释放之后钉住 effect 每次 commit 都提前返回，scrollTop 从此不再变化，也就再也没有 scroll 事件能触发重新接管：**跟随永久死亡**，表现正是"点了 scrollToBottom 之后流式输出不再自动下滚"。
+
+修复分两点：
+
+- **落在底部的错位不释放。** bottom 模式下，如果错位后的位置恰好就是底部（`distance <= BOTTOM_THRESHOLD`），那是 clamp 而不是手势——保持钉住，并把 `appliedRef` 重同步到当前值。落在别处才释放。
+- **释放后不再 `return`，同一个事件里继续走重新接管的判断。** 拖动滚动条直接甩到底部这种一步到位的手势，也能在同一帧里恢复跟随；重新接管时同样重同步 `appliedRef`，避免下一帧拿旧值比较又误判。
 
 ---
 
