@@ -11,7 +11,7 @@ import {
 import { createContext, useContext, useEffect, useState } from "react";
 import { createStore, StoreApi, useStore } from "zustand";
 
-type ChatStatus = "loading" | "idle" | "sending" | "streaming" | "approval";
+type ChatStatus = "loading" | "idle" | "sending" | "reasoning" | "streaming" | "approval";
 
 // {@ Arguments of QuestionTool
 interface Option {
@@ -108,6 +108,12 @@ export interface ChatContextValue {
   onStream: (id: string, chunk: string) => void;
 
   /**
+   * A chunk of the reasoning summary arrived. It is shown in the streaming message until the answer starts
+   * (onStream) or the iteration completes (onStreamDone).
+   */
+  onReasoningStream: (id: string, chunk: string) => void;
+
+  /**
    * Current iteration done.
    */
   onStreamDone: (message: Message) => void;
@@ -201,6 +207,8 @@ const createChatStore = (scroll: HTMLDivElement | null) =>
         };
 
         // The model is called only after all tools finish, so the first chunk means no tool is running.
+        // Contents are rebuilt as text only, which also ends the reasoning phase: the streamed reasoning is dropped
+        // here, and the full summary arrives with llm.complete.
         return {
           status: "streaming",
           runningToolCalls: 0,
@@ -208,6 +216,20 @@ const createChatStore = (scroll: HTMLDivElement | null) =>
             ...lastMessage,
             id,
             contents: [{ type: "text", text: CollectMessageContents(lastMessage) + chunk }],
+          },
+        };
+      }),
+
+    onReasoningStream: (id: string, chunk: string) =>
+      set((state) => {
+        const current = state.streamingMessage;
+        const previous = current?.contents.find((c) => c.type === "reasoning")?.summary ?? "";
+
+        return {
+          status: "reasoning",
+          streamingMessage: {
+            ...(current || { id, role: "assistant" as const }),
+            contents: [{ type: "reasoning", id, summary: previous + chunk }],
           },
         };
       }),

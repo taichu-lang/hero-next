@@ -7,6 +7,8 @@ import {
   ChatContextProvider,
   ChatMessage,
   ChatMessageBubble,
+  ChatReasoning,
+  ChatReasoningStream,
   ChatMessageContextProvider,
   ChatMessageMetadata,
   Message,
@@ -411,6 +413,17 @@ function AssistantMessage({ streaming = false }: { streaming?: boolean }) {
               <ChatMessageBubble key={`${id}-${idx}`}>
                 <Markdown isAnimating={streaming}>{c.text}</Markdown>
               </ChatMessageBubble>
+            );
+
+          case "reasoning":
+            return streaming ? (
+              <ChatReasoningStream key={c.id}>
+                <Markdown isAnimating>{c.summary}</Markdown>
+              </ChatReasoningStream>
+            ) : (
+              <ChatReasoning key={c.id}>
+                <Markdown>{c.summary}</Markdown>
+              </ChatReasoning>
             );
 
           case "tool_call":

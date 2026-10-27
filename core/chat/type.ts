@@ -32,7 +32,16 @@ export interface ToolResultContent {
   result: string;
 }
 
-export type MessageContent = TextContent | UsageContent | ToolCallContent | ToolResultContent;
+// The reasoning summary of the model. While streaming, `summary` grows with each llm.reasoning.delta;
+// llm.complete delivers the full summary.
+export interface ReasoningContent {
+  type: "reasoning";
+  id: string;
+  summary: string;
+}
+
+export type MessageContent =
+  TextContent | UsageContent | ToolCallContent | ToolResultContent | ReasoningContent;
 
 export interface BaseMessage {
   id: string;
