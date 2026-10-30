@@ -6,6 +6,7 @@ import {
   Editor,
   EditorContent,
   JSONContent,
+  mergeAttributes,
   Node,
   NodeViewWrapper,
   ReactNodeViewProps,
@@ -226,6 +227,17 @@ const SkillNode = Node.create<Skill>({
       version: { default: undefined },
       installation: { default: undefined },
     };
+  },
+
+  // The React node view only covers display; the schema still needs toDOM. EditorContent clears
+  // all nodeViews on unmount (route change), and ProseMirror then falls back to spec.toDOM for
+  // every node — without renderHTML that crashes with "spec.toDOM is not a function".
+  parseHTML() {
+    return [{ tag: "span[data-skill]" }];
+  },
+
+  renderHTML({ node, HTMLAttributes }) {
+    return ["span", mergeAttributes({ "data-skill": "" }, HTMLAttributes), node.attrs.name];
   },
 
   addNodeView() {

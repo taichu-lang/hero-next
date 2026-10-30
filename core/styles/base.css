@@ -13,17 +13,43 @@
 :root,
 .light,
 [data-theme="light"] {
+  /* Ground + ink */
+  --background: oklch(0.967 0.003 84); /* #f5f4f2 paper */
+  --foreground: oklch(0.145 0 0); /* #0a0a0a ink */
+
+  /* Hueless neutrals (Tailwind neutral ramp) */
+  --muted: oklch(0.556 0 0); /* neutral-500 #737373 */
+  --default: oklch(0.928 0.005 90); /* warm fill, one step under paper */
+  --border: oklch(0.87 0 0); /* neutral-300 #d4d4d4 */
+  --separator: oklch(0.922 0 0); /* neutral-200 #e5e5e5 */
+
+  --surface-shadow: 0 0 0 0 transparent;
+  --field-shadow: 0 0 0 0 transparent;
+  --overlay-shadow: 0 1px 2px rgb(10 10 10 / 4%), 0 20px 40px -24px rgb(10 10 10 / 22%);
+
   --accent: oklch(0.6016 0.07 211.92);
   --accent-foreground: oklch(0.9454 0.1444 102.84);
+}
 
-  --danger-soft: oklch(0.8715 0.0685 25.22);
-  --danger-soft-foreground: oklch(0.3563 0.1447 25.69);
+::selection {
+  background: color-mix(in oklab, var(--accent) 20%, transparent);
+  color: var(--foreground);
 }
 
 .dark,
 [data-theme="dark"] {
   --accent: oklch(0.3719 0.0166 251.78);
   --accent-foreground: oklch(0.7309 0.1146 84.99);
+
+  /*
+   * The dark accent (L 0.37, nearly grey) cannot produce a visible tint: HeroUI's
+   * 12% accent-soft lands ΔL≈0.016 from the ground, so selected toggles and soft
+   * chips/buttons read as unselected. The dark theme's visible accent hue is the
+   * amber accent-foreground — soft tints mix from it instead (ΔL≈0.09 over ground).
+   */
+  --accent-soft: color-mix(in oklab, var(--accent-foreground) 18%, transparent);
+  --accent-soft-hover: color-mix(in oklab, var(--accent-foreground) 24%, transparent);
+
   --focus: oklch(0.9347 0.0128 86.83);
   --border: color-mix(in oklab, var(--focus) 70%, transparent);
   /* foreground of secondary */
@@ -33,9 +59,30 @@
   /* background of secondary */
   --default: oklch(0.3492 0.0034 286.22);
 
+  /*
+   * Dark counterparts of the light block above: every variable the light block
+   * defines must be redefined here, or the unlayered `:root` rule keeps the light
+   * value in dark mode (unlayered beats HeroUI's `@layer base` dark defaults).
+   */
+  --foreground: oklch(0.945 0.005 84); /* paper-white: the ink mirrored, warm like the paper */
+  --muted: oklch(0.708 0 0); /* neutral-400 #a3a3a3, ~6.6:1 on the dark ground */
+  --separator: oklch(0.32 0 0); /* #333: ~21 levels over the ground, one step under --default */
+
+  /* Invisible like light's, but inset — HeroUI's dark convention, keeps ring utilities interpolable. */
+  --surface-shadow: 0 0 0 0 transparent inset;
+  --field-shadow: 0 0 0 0 transparent inset;
+  /* Same geometry as light's overlay shadow, black at dark-mode strength. */
+  --overlay-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 20px 40px -24px rgb(0 0 0 / 55%);
+
   --warning-soft: oklch(0.7936 0.1546 90.09 / 23.9%);
   --danger-soft: oklch(0.7848 0.1249 25.04 / 23.9%);
   --danger-soft-foreground: oklch(0.8269 0.0963 24.82);
+}
+
+/* Same reason as --accent-soft above: the dark selection mixes from the amber accent-foreground. */
+.dark ::selection,
+[data-theme="dark"] ::selection {
+  background: color-mix(in oklab, var(--accent-foreground) 35%, transparent);
 }
 
 @property --border-angle {
@@ -71,11 +118,15 @@
   }
 
   .dropdown__popover {
-    @apply bg-background-secondary rounded-2xl;
+    @apply rounded-xl;
+  }
+
+  .dropdown__popover [data-slot="dropdown-menu"] {
+    @apply p-1;
   }
 
   .dropdown__menu .menu-item {
-    @apply rounded-xl;
+    @apply min-h-8 rounded-xl;
   }
 
   /* Placeholder */

@@ -69,7 +69,7 @@ export interface ChatComposerProps {
 export function ChatComposerDrawer({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     // Padding is same as EditorContent.
-    <div className="flex flex-col p-3">
+    <div className="flex flex-col px-3 py-1.5">
       <div className="flex h-5 w-full cursor-pointer justify-center">
         <div className="bg-background-inverse/80 h-0.5 w-4 rounded-full"></div>
       </div>
@@ -131,8 +131,9 @@ function ChatComposerLayout({
       {/* Do not wrap drawer in ChatComposerDrawer by default, as it might be a component that returns null. */}
       {/* Padding is same as input area. */}
       {drawer && <div className="px-3">{drawer}</div>}
+      {/* This area should cover part of ChatComposerStatus. */}
       <div
-        className={cn("flex flex-1 flex-col gap-2 p-3", radius, {
+        className={cn("bg-background-secondary z-10 flex flex-1 flex-col gap-2 p-3", radius, {
           "hover:outline-segment hover:outline": elevation === "low",
           "shadow-none": elevation === "none",
         })}
