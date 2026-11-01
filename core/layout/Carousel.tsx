@@ -1,118 +1,142 @@
 "use client";
 
 import { Button, cn } from "@heroui/react";
-import { ChevronLeftIcon, ChevronRightIcon, PauseIcon, PlayIcon, Volume2Icon, VolumeXIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type KeyboardEvent,
+  type ReactNode,
+  type SetStateAction,
+  type TouchEvent,
+} from "react";
 
-export type CarouselSlide =
-  | {
-      id: string | number;
-      type: "image";
-      src: string;
-      alt?: string;
-      priority?: boolean;
-    }
-  | {
-      id: string | number;
-      type: "video";
-      src: string;
-      poster?: string;
-      controls?: boolean;
-      loop?: boolean;
-    };
+/** Live carousel state passed to the `overlay` render prop. */
+export interface CarouselState {
+  index: number;
+  total: number;
+  /** 0..1 autoplay progress of the current slide (drives the "progress" indicator) */
+  progress: number;
+  hovered: boolean;
+  paused: boolean;
+  setPaused: Dispatch<SetStateAction<boolean>>;
+  goTo: (index: number) => void;
+  prev: () => void;
+  next: () => void;
+}
 
 export interface CarouselProps {
-  slides: CarouselSlide[];
+  /** Slide content. Each node is rendered as one full-size slide. */
+  slides: ReactNode[];
   /** Autoplay interval in ms; pass 0 to disable autoplay. Defaults to 5000 */
   autoPlayInterval?: number;
   /** Whether to pause autoplay on hover. Defaults to true */
   pauseOnHover?: boolean;
+  /** Transition between slides. Defaults to "slide" */
+  animation?: "slide" | "fade";
   /** Whether to show the bottom indicators. Defaults to true */
   showIndicators?: boolean;
-  /** Whether to show the prev/next buttons (visible on hover only). Defaults to true */
-  showArrows?: boolean;
-  /** Whether to show the play/pause and mute buttons (only relevant for video). Defaults to true */
-  showControls?: boolean;
-  /** Border radius class. Defaults to rounded-2xl */
-  radius?: string;
-  /** Aspect ratio class. Defaults to aspect-[16/9] */
-  aspectRatio?: string;
-  className?: string;
-  onChange?: (index: number) => void;
+  /** Indicator style: "dots" (centered pills) or "progress" (full-width bars). Defaults to "dots" */
+  indicatorVariant?: "dots" | "progress";
   /** Custom aria-label for the indicators */
   indicatorLabel?: (index: number, total: number) => string;
+  /** Whether to show the prev/next buttons (visible on hover only). Defaults to true */
+  showArrows?: boolean;
+  /** Border radius class. Defaults to rounded-2xl */
+  radius?: string;
+  /** Aspect ratio class. Defaults to aspect-[16/9]; pass "" for content-sized height */
+  aspectRatio?: string;
+  /** Accessible name for the carousel region. Defaults to the "Carousel.label" translation */
+  ariaLabel?: string;
+  className?: string;
+  onChange?: (index: number) => void;
+  /** Extra content rendered above the slides (media controls, captions...). Receives live carousel state. */
+  overlay?: ReactNode | ((state: CarouselState) => ReactNode);
 }
 
+/**
+ * Generic carousel over arbitrary ReactNode slides.
+ *
+ * Owns index/autoplay state, keyboard + touch navigation, arrows and
+ * indicators. Media handling (images, videos, playback controls) lives in
+ * `CarouselMedia`, which composes this component.
+ */
 export function Carousel({
   slides,
   autoPlayInterval = 5000,
   pauseOnHover = true,
+  animation = "slide",
   showIndicators = true,
+  indicatorVariant = "dots",
+  indicatorLabel,
   showArrows = true,
-  showControls = true,
   radius = "rounded-2xl",
   aspectRatio = "aspect-[16/9]",
+  ariaLabel,
   className,
   onChange,
-  indicatorLabel,
+  overlay,
 }: CarouselProps) {
   const t = useTranslations("Carousel");
   const total = slides.length;
   const [index, setIndex] = useState(0);
+  const [progress, setProgress] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [paused, setPaused] = useState(false);
-  const [muted, setMuted] = useState(true);
-  const videoRefs = useRef<Array<HTMLVideoElement | null>>([]);
   const touchStartX = useRef<number | null>(null);
-  const rootRef = useRef<HTMLDivElement | null>(null);
+  const indexRef = useRef(index);
+  const elapsedRef = useRef(0);
+  const lastTickRef = useRef(0);
 
-  const go = useCallback(
-    (next: number) => {
+  // Keep the latest callbacks/state in refs so the rAF loop and goTo stay
+  // stable and don't restart on every consumer render.
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
+  useEffect(() => {
+    indexRef.current = index;
+  }, [index]);
+
+  const goTo = useCallback(
+    (i: number) => {
       if (total === 0) return;
-      const n = ((next % total) + total) % total;
+      const n = ((i % total) + total) % total;
+      elapsedRef.current = 0;
+      setProgress(0);
       setIndex(n);
-      onChange?.(n);
+      onChangeRef.current?.(n);
     },
-    [total, onChange],
+    [total],
   );
 
-  const prev = useCallback(() => go(index - 1), [go, index]);
-  const next = useCallback(() => go(index + 1), [go, index]);
+  const prev = useCallback(() => goTo(indexRef.current - 1), [goTo]);
+  const next = useCallback(() => goTo(indexRef.current + 1), [goTo]);
 
+  // rAF-driven autoplay: accumulating elapsed time in a ref makes hover/pause
+  // a simple "stop accumulating", and yields the 0..1 progress consumed by
+  // the "progress" indicator variant.
+  const running = autoPlayInterval > 0 && total > 1 && !paused && !(pauseOnHover && hovered);
   useEffect(() => {
-    if (!autoPlayInterval || total < 2) return;
-    if (paused) return;
-    if (pauseOnHover && hovered) return;
-    const t = setInterval(() => {
-      setIndex((i) => {
-        const n = (i + 1) % total;
-        onChange?.(n);
-        return n;
-      });
-    }, autoPlayInterval);
-    return () => clearInterval(t);
-  }, [autoPlayInterval, total, paused, pauseOnHover, hovered, onChange]);
-
-  useEffect(() => {
-    videoRefs.current.forEach((v, i) => {
-      if (!v) return;
-      if (i === index) {
-        v.muted = muted;
-        const p = v.play();
-        if (p && typeof p.catch === "function")
-          p.catch(() => {
-            /* autoplay may be blocked by the browser */
-          });
+    if (!running) return;
+    lastTickRef.current = performance.now();
+    let raf = requestAnimationFrame(function tick(now) {
+      const delta = now - lastTickRef.current;
+      lastTickRef.current = now;
+      elapsedRef.current += delta;
+      if (elapsedRef.current >= autoPlayInterval) {
+        goTo(indexRef.current + 1);
       } else {
-        v.pause();
-        try {
-          v.currentTime = 0;
-        } catch {}
+        setProgress(elapsedRef.current / autoPlayInterval);
       }
+      raf = requestAnimationFrame(tick);
     });
-  }, [index, muted, total]);
+    return () => cancelAnimationFrame(raf);
+  }, [running, autoPlayInterval, goTo]);
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "ArrowLeft") {
@@ -127,10 +151,10 @@ export function Carousel({
     }
   };
 
-  const onTouchStart = (e: React.TouchEvent) => {
+  const onTouchStart = (e: TouchEvent<HTMLDivElement>) => {
     touchStartX.current = e.touches[0]?.clientX ?? null;
   };
-  const onTouchEnd = (e: React.TouchEvent) => {
+  const onTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
     if (touchStartX.current == null) return;
     const dx = (e.changedTouches[0]?.clientX ?? 0) - touchStartX.current;
     if (Math.abs(dx) > 40) {
@@ -140,16 +164,17 @@ export function Carousel({
     touchStartX.current = null;
   };
 
-  const currentSlide = slides[index];
-  const hasVideo = useMemo(() => slides.some((s) => s.type === "video"), [slides]);
-  const isCurrentVideo = currentSlide?.type === "video";
+  const slideAria = (i: number) => ({
+    "aria-hidden": i !== index,
+    "aria-roledescription": "slide",
+    "aria-label": `${i + 1} / ${total}`,
+  });
 
   return (
     <div
-      ref={rootRef}
       role="region"
       aria-roledescription="carousel"
-      aria-label={t("label")}
+      aria-label={ariaLabel ?? t("label")}
       tabIndex={0}
       onKeyDown={onKeyDown}
       onMouseEnter={() => setHovered(true)}
@@ -157,60 +182,46 @@ export function Carousel({
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       className={cn(
-        "group bg-default-100 relative w-full overflow-hidden outline-none",
+        "group relative w-full overflow-hidden outline-none",
         "focus-visible:ring-primary focus-visible:ring-2 focus-visible:ring-offset-2",
         radius,
         aspectRatio,
         className,
       )}
     >
-      <div
-        className="flex h-full w-full transition-transform duration-500 ease-out"
-        style={{ transform: `translate3d(-${index * 100}%, 0, 0)` }}
-      >
-        {slides.map((slide, i) => (
-          <div
-            key={slide.id}
-            className="relative h-full w-full shrink-0"
-            aria-hidden={i !== index}
-            aria-roledescription="slide"
-            aria-label={`${i + 1} / ${total}`}
-          >
-            {slide.type === "image" ? (
-              <Image
-                src={slide.src}
-                alt={slide.alt ?? ""}
-                draggable={false}
-                fill
-                sizes="100vw"
-                className="h-full w-full object-cover select-none"
-              />
-            ) : (
-              <video
-                ref={(el) => {
-                  videoRefs.current[i] = el;
-                }}
-                src={slide.src}
-                poster={slide.poster}
-                loop={slide.loop ?? true}
-                muted={muted}
-                playsInline
-                preload="metadata"
-                controls={false}
-                className="h-full w-full object-cover"
-              />
-            )}
-          </div>
-        ))}
-      </div>
-
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-0 transition-opacity duration-300",
-          "bg-[linear-gradient(to_bottom,rgba(0,0,0,0.35)_0%,rgba(0,0,0,0)_25%,rgba(0,0,0,0)_60%,rgba(0,0,0,0.55)_100%)]",
-          hovered ? "opacity-100" : "opacity-0",
-        )}
-      />
+      {animation === "slide" ? (
+        <div
+          className="flex h-full w-full transition-transform duration-500 ease-out"
+          style={{ transform: `translate3d(-${index * 100}%, 0, 0)` }}
+        >
+          {slides.map((slide, i) => (
+            <div
+              key={i}
+              data-active={i === index || undefined}
+              className="group/slide relative h-full w-full shrink-0"
+              {...slideAria(i)}
+            >
+              {slide}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="relative h-full w-full">
+          {slides.map((slide, i) => (
+            <div
+              key={i}
+              data-active={i === index || undefined}
+              className={cn(
+                "group/slide absolute inset-0 transition-opacity duration-700 ease-out",
+                i === index ? "opacity-100" : "pointer-events-none opacity-0",
+              )}
+              {...slideAria(i)}
+            >
+              {slide}
+            </div>
+          ))}
+        </div>
+      )}
 
       {showArrows && total > 1 && (
         <>
@@ -243,58 +254,44 @@ export function Carousel({
         </>
       )}
 
-      <div
-        className={cn(
-          "pointer-events-none absolute top-4 right-4 z-10 rounded-full bg-black/40 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md",
-          "transition-opacity duration-300",
-          hovered ? "opacity-100" : "opacity-0",
-        )}
-      >
-        {index + 1} / {total}
-      </div>
-
-      {showControls && hasVideo && (
+      {showIndicators && total > 1 && (
         <div
           className={cn(
-            "absolute top-4 left-4 z-10 flex gap-2 transition-opacity duration-300",
-            hovered ? "opacity-100" : "opacity-0",
+            "absolute inset-x-0 z-10",
+            indicatorVariant === "progress"
+              ? "bottom-0 flex gap-2 p-5"
+              : "bottom-4 flex justify-center gap-2 px-4",
           )}
         >
-          <Button
-            isIconOnly
-            size="sm"
-            aria-label={paused ? t("resume") : t("pause")}
-            onPress={() => setPaused((p) => !p)}
-            className="bg-white/20 text-white backdrop-blur-md hover:bg-white/30"
-          >
-            {paused ? <PlayIcon className="size-4" /> : <PauseIcon className="size-4" />}
-          </Button>
-          {isCurrentVideo && (
-            <Button
-              isIconOnly
-              size="sm"
-              aria-label={muted ? t("unmute") : t("mute")}
-              onPress={() => setMuted((m) => !m)}
-              className="bg-white/20 text-white backdrop-blur-md hover:bg-white/30"
-            >
-              {muted ? <VolumeXIcon className="size-4" /> : <Volume2Icon className="size-4" />}
-            </Button>
-          )}
-        </div>
-      )}
-
-      {showIndicators && total > 1 && (
-        <div className="absolute inset-x-0 bottom-4 z-10 flex justify-center gap-2 px-4">
-          {slides.map((s, i) => {
+          {slides.map((_, i) => {
             const active = i === index;
             const label = indicatorLabel ? indicatorLabel(i, total) : t("goToSlide", { index: i + 1, total });
+            if (indicatorVariant === "progress") {
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  aria-label={label}
+                  aria-current={active}
+                  onClick={() => goTo(i)}
+                  className="flex h-5 flex-1 cursor-pointer items-center"
+                >
+                  <span className="h-1 w-full overflow-hidden rounded-full bg-white/25">
+                    <span
+                      className="block h-full rounded-full bg-white"
+                      style={{ width: i < index ? "100%" : active ? `${progress * 100}%` : "0%" }}
+                    />
+                  </span>
+                </button>
+              );
+            }
             return (
               <button
-                key={s.id}
+                key={i}
                 type="button"
                 aria-label={label}
                 aria-current={active}
-                onClick={() => go(i)}
+                onClick={() => goTo(i)}
                 className={cn(
                   "h-1.5 rounded-full transition-all duration-300 ease-out",
                   "focus-visible:ring-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black/40",
@@ -308,26 +305,9 @@ export function Carousel({
         </div>
       )}
 
-      {currentSlide && "alt" in currentSlide && currentSlide.alt && (
-        <Caption text={currentSlide.alt} visible={hovered} />
-      )}
+      {typeof overlay === "function"
+        ? overlay({ index, total, progress, hovered, paused, setPaused, goTo, prev, next })
+        : overlay}
     </div>
   );
 }
-
-function Caption({ text, visible }: { text: string; visible: boolean }): ReactNode {
-  return (
-    <div
-      className={cn(
-        "pointer-events-none absolute bottom-10 left-1/2 z-10 max-w-[80%] -translate-x-1/2",
-        "truncate rounded-full bg-black/40 px-3 py-1 text-sm text-white backdrop-blur-md",
-        "transition-opacity duration-300",
-        visible ? "opacity-100" : "opacity-0",
-      )}
-    >
-      {text}
-    </div>
-  );
-}
-
-export default Carousel;

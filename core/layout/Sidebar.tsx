@@ -167,11 +167,7 @@ export interface SidebarFooterProps {
 }
 
 Sidebar.Footer = function SidebarFooter({ children, className }: SidebarFooterProps) {
-  return (
-    <div className={cn("border-default mt-auto flex shrink-0 items-center gap-2 border-t p-1.5", className)}>
-      {children}
-    </div>
-  );
+  return <div className={cn("mt-auto flex shrink-0 items-center gap-2 p-1.5", className)}>{children}</div>;
 };
 
 export interface SidebarItemProps {

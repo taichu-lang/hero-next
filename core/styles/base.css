@@ -118,15 +118,15 @@
   }
 
   .dropdown__popover {
-    @apply rounded-xl;
+    @apply rounded-lg;
   }
 
   .dropdown__popover [data-slot="dropdown-menu"] {
-    @apply p-1;
+    @apply p-1.25;
   }
 
   .dropdown__menu .menu-item {
-    @apply min-h-8 rounded-xl;
+    @apply min-h-8 rounded-lg;
   }
 
   /* Placeholder */

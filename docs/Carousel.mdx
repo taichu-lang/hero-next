@@ -1,0 +1,184 @@
+# Carousel / CarouselMedia
+
+两个组件,一套轮播逻辑:
+
+- **`Carousel`**:通用轮播,slide 是任意 `ReactNode`。持有 index/autoplay 状态,负责切换动画、箭头、指示器、键盘与触摸导航。不关心 slide 内容。
+- **`CarouselMedia`**:图片/视频轮播,组合 `Carousel` 实现。负责 `next/image` 渲染、视频随激活 slide 播放/复位、播放暂停与静音按钮、hover 渐变遮罩、计数徽章、alt 文字 Caption。
+
+需要展示图片/视频就用 `CarouselMedia`;slide 是自定义内容(文案、卡片、渐变层等)就用 `Carousel`。
+
+## 引入
+
+```tsx
+import { Carousel, CarouselMedia } from "hero-next/layout";
+import type { CarouselProps, CarouselState, CarouselMediaProps, CarouselMediaSlide } from "hero-next/layout";
+```
+
+两个组件都是 `"use client"`。
+
+## Carousel 基础用法
+
+```tsx
+<Carousel
+  slides={[
+    <div key="a" className="flex h-full items-center justify-center bg-sky-500">A</div>,
+    <div key="b" className="flex h-full items-center justify-center bg-emerald-500">B</div>,
+    <div key="c" className="flex h-full items-center justify-center bg-amber-500">C</div>,
+  ]}
+/>
+```
+
+默认:16/9、圆角 `rounded-2xl`、5s 自动播放、hover 暂停、平移(slide)切换、底部圆点指示器、hover 时显示左右箭头。
+
+### CarouselProps
+
+| 参数               | 类型                                              | 默认值            | 说明                                                              |
+| ------------------ | ------------------------------------------------- | ----------------- | ----------------------------------------------------------------- |
+| `slides`           | `ReactNode[]`                                     | —                 | 每个 node 渲染为一整页 slide,自动占满容器                          |
+| `autoPlayInterval` | `number`                                          | `5000`            | 自动播放间隔(ms);传 `0` 关闭自动播放                              |
+| `pauseOnHover`     | `boolean`                                         | `true`            | hover 时暂停自动播放(暂停是"停止累计时间",移开后从原进度继续)     |
+| `animation`        | `"slide" \| "fade"`                               | `"slide"`         | 切换动画:平移 / 交叉淡入淡出                                       |
+| `showIndicators`   | `boolean`                                         | `true`            | 是否显示底部指示器(仅 `total > 1` 时渲染)                         |
+| `indicatorVariant` | `"dots" \| "progress"`                            | `"dots"`          | 指示器样式,见下                                                    |
+| `indicatorLabel`   | `(index, total) => string`                        | —                 | 覆盖指示器按钮的 aria-label(默认用 `Carousel.goToSlide` 翻译)     |
+| `showArrows`       | `boolean`                                         | `true`            | 左右箭头,hover 时显现(仅 `total > 1` 时渲染)                      |
+| `radius`           | `string`                                          | `"rounded-2xl"`   | 圆角 class                                                        |
+| `aspectRatio`      | `string`                                          | `"aspect-[16/9]"` | 宽高比 class;**传 `""` 时高度由内容/`className` 决定**             |
+| `ariaLabel`        | `string`                                          | —                 | carousel region 的可访问名称,默认用 `Carousel.label` 翻译          |
+| `className`        | `string`                                          | —                 | 追加到根容器                                                      |
+| `onChange`         | `(index: number) => void`                         | —                 | 切换回调,自动播放和手动切换(箭头/指示器/键盘/触摸)都会触发        |
+| `overlay`          | `ReactNode \| ((state: CarouselState) => ReactNode)` | —              | 渲染在 slide 之上的叠加层,见下                                     |
+
+### 指示器两组默认样式
+
+- **`dots`**:底部居中的圆点,激活项拉长为白色胶囊(带辉光),非激活为半透明小圆点。
+- **`progress`**:底部等宽分布的进度条(Lovart 风格),每格是一条轨道;当前格按自动播放进度 0→100% 填充,已经过的格全满,未来的格为空。点击任意格跳转。依赖内部 rAF 驱动的 `progress`,只在自动播放开启时有动画效果。
+
+两组样式都是**白色系**,为深色/图片背景设计;浅色背景上请用 `showIndicators={false}` 后通过 `overlay` 自绘,或包一层自行覆盖。
+
+### 动画
+
+- **`slide`**(默认):所有 slide 横向排布,容器 `translate3d` 平移切换,500ms。
+- **`fade`**:所有 slide 绝对定位叠放,交叉淡入淡出,700ms;非激活 slide 自动 `pointer-events-none`。
+
+### slide 的激活态: `data-active` 与 `group/slide`
+
+每个 slide 的包装层带 `data-active` 属性(仅激活时存在)和 `group/slide` 命名 group。**slide 内容不接收任何 props**,需要感知激活态时用 Tailwind 的 group 变体:
+
+```tsx
+<h3 className="translate-y-3 opacity-0 transition-all duration-700 group-data-[active]/slide:translate-y-0 group-data-[active]/slide:opacity-100">
+  标题
+</h3>
+```
+
+`animation="fade"` 时包装层已经做了整体 opacity 过渡;`group-data-[active]/slide:` 适合在 fade 之上叠加"元素逐个上浮/延迟出现"这类细粒度动画。
+
+### overlay 与 CarouselState
+
+`overlay` 用于在 slide 之上叠加自定义 UI(控件、角标、说明文字)。传函数时可拿到实时状态:
+
+```tsx
+<Carousel
+  slides={slides}
+  overlay={({ index, total, hovered, paused, setPaused, prev, next }) => (
+    <div className={cn("absolute top-4 right-4 z-10 transition-opacity", hovered ? "opacity-100" : "opacity-0")}>
+      {index + 1} / {total}
+    </div>
+  )}
+/>
+```
+
+`CarouselState` 字段:
+
+| 字段        | 类型                                     | 说明                                        |
+| ----------- | ---------------------------------------- | ------------------------------------------- |
+| `index`     | `number`                                 | 当前 slide 下标                             |
+| `total`     | `number`                                 | slide 总数                                  |
+| `progress`  | `number`                                 | 当前 slide 自动播放进度,0..1                |
+| `hovered`   | `boolean`                                | 指针是否悬停在 carousel 上                  |
+| `paused`    | `boolean`                                | 自动播放是否被暂停(空格键或 `setPaused`)   |
+| `setPaused` | `Dispatch<SetStateAction<boolean>>`      | 暂停/恢复自动播放                           |
+| `goTo`      | `(index: number) => void`                | 跳转到指定 slide(取模,可越界),重置进度    |
+| `prev`      | `() => void`                             | 上一张                                      |
+| `next`      | `() => void`                             | 下一张                                      |
+
+overlay 内容默认定位在根容器内(`absolute` 相对 carousel 根),`z-10` 以上可盖过指示器。
+
+### 内置交互
+
+- **键盘**(carousel 聚焦时,根容器 `tabIndex={0}`):`←`/`→` 切换,`空格` 暂停/恢复自动播放。
+- **触摸**:横向滑动超过 40px 切换。
+- **无障碍**:根为 `role="region"` + `aria-roledescription="carousel"`;每个 slide 有 `aria-roledescription="slide"`、`aria-label="{i+1} / {total}"`,非激活 slide `aria-hidden`。
+
+## CarouselMedia 用法
+
+```tsx
+import { CarouselMedia, type CarouselMediaSlide } from "hero-next/layout";
+
+const slides: CarouselMediaSlide[] = [
+  { id: 1, type: "image", src: "/hero-1.jpg", alt: "产品首页", priority: true },
+  { id: 2, type: "image", src: "/hero-2.jpg", alt: "编辑器" },
+  { id: 3, type: "video", src: "/demo.mp4", poster: "/demo-poster.jpg", loop: true },
+];
+
+<CarouselMedia slides={slides} className="border border-default-200" onChange={(i) => console.log(i)} />;
+```
+
+### CarouselMediaSlide
+
+```ts
+type CarouselMediaSlide =
+  | { id: string | number; type: "image"; src: string; alt?: string; priority?: boolean }
+  | { id: string | number; type: "video"; src: string; poster?: string; controls?: boolean; loop?: boolean };
+```
+
+- image 用 `next/image` `fill` 渲染(`sizes="100vw"`,`object-cover`,禁拖拽),`src` 需符合 Next 的 image 配置(本地 public 路径或已配置的远程域名)。
+- video 用原生 `<video>`:`playsInline`、`preload="metadata"`、隐藏原生 controls,`loop` 默认 `true`。
+- `alt` 非空时,hover 会在底部显示截断的 Caption 胶囊。
+
+### 行为
+
+- **视频播放与激活 slide 同步**:切到某张视频时自动 `play()`(浏览器拒绝时静默失败),切走时 `pause()` 并 `currentTime = 0` 复位。
+- **默认静音**(`muted = true`),这是浏览器自动播放策略要求;hover 后左上角出现静音切换按钮(仅当前 slide 是视频时)。
+- **hover 渐变遮罩**:悬停时上下压暗,提升控件可读性。
+- **计数徽章**:hover 时右上角显示 `index + 1 / total`。
+- **控件按钮**:`showControls`(默认 `true`)且 slides 中存在视频时,hover 显示播放/暂停(控制的是自动播放,不暂停视频本身)+ 静音按钮。
+
+### CarouselMediaProps
+
+在 `CarouselProps` 基础上去掉 `animation`(固定 slide 平移)和 `overlay`(已被媒体控件占用),其余参数同名同义、透传给 `Carousel`,另外增加:
+
+| 参数           | 类型      | 默认值 | 说明                                       |
+| -------------- | --------- | ------ | ------------------------------------------ |
+| `showControls` | `boolean` | `true` | 是否显示播放/暂停与静音按钮(仅含视频时相关) |
+
+根容器额外带 `bg-default-100` 背景(图片加载前的占位色)。
+
+## i18n
+
+内置文案在 hero-next 的 `messages/{locale}.json` 的 `Carousel` 命名空间:`label`、`previous`、`next`、`pause`、`resume`、`mute`、`unmute`、`goToSlide`(带 `{index}`/`{total}` 占位)。消费方(web/app)的 i18n request 已合并 hero-next messages,直接使用即可。
+
+需要自定义时不用改 messages,用 props 覆盖:
+
+```tsx
+<Carousel
+  ariaLabel={t("myCarousel.label")}
+  indicatorLabel={(i, total) => t("myCarousel.goTo", { index: i + 1 })}
+  ...
+/>
+```
+
+## 真实用例
+
+- **`hero-next`**:营销页图片/视频轮播 → `CarouselMedia`。
+- **`base-ui/core/auth/FeatureCarousel.tsx`**:登录弹窗左侧的功能介绍轮播 → `Carousel` + `animation="fade"` + `indicatorVariant="progress"` + `showArrows={false}` + `aspectRatio=""`(高度由 `className="h-full min-h-[560px]"` 决定),slide 内容用 `group-data-[active]/slide:` 做图标/标题/描述的 stagger 上浮。
+
+## 常用注意点
+
+- **高度**:默认 `aspect-[16/9]` 撑高度;要在固定高度容器里填满(如弹窗侧栏),传 `aspectRatio=""` 并给 `className` 设 `h-full` 或具体高度,slide 内容自己处理布局。
+- **只有一张 slide 时**箭头和指示器自动不渲染;`autoPlayInterval={0}` 或 `total < 2` 时不启动 rAF 循环。
+- **`progress` 只在自动播放运行时推进**;暂停/hover 时冻结在当前值,`goTo` 会重置为 0。关闭自动播放(`autoPlayInterval={0}`)时 `progress` 指示器不会有填充动画,此时应改用 `dots`。
+- **`onChange` 在所有切换路径触发**(自动播放、箭头、指示器、键盘、触摸、`goTo`),但初始挂载不触发。
+- **`slides` 数组的 node 用稳定 key**;内部包装层用下标作 key,slide 顺序变化会按下标 diff。
+- **浅色背景慎用内置指示器/箭头**(白色系配色);用 `showIndicators={false}`、`showArrows={false}` 关掉,或 overlay 自绘。
+- **视频不会因 `paused`(自动播放暂停)而暂停**——播放/暂停按钮控制的是轮播切换,视频本身跟随激活 slide。
