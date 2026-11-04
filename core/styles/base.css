@@ -31,6 +31,16 @@
   --accent-foreground: oklch(0.9454 0.1444 102.84);
 }
 
+/*
+ * HeroUI hardcodes `ring-2` in this utility (no width variable), and every field (Input,
+ * InputGroup, InputOTP slot, TextArea, Select...) reaches it via status-focused-field. Redefined
+ * here, after @heroui/styles, so the focus ring is 1px everywhere.
+ */
+@utility focus-field-ring {
+  @apply ring-1 ring-focus ring-offset-0 outline-none;
+  --tw-ring-offset-width: 0px;
+}
+
 ::selection {
   background: color-mix(in oklab, var(--accent) 20%, transparent);
   color: var(--foreground);
@@ -67,6 +77,13 @@
   --foreground: oklch(0.945 0.005 84); /* paper-white: the ink mirrored, warm like the paper */
   --muted: oklch(0.708 0 0); /* neutral-400 #a3a3a3, ~6.6:1 on the dark ground */
   --separator: oklch(0.32 0 0); /* #333: ~21 levels over the ground, one step under --default */
+
+  /*
+   * Form fields (Input, InputGroup, InputOTP slots) read --field-background. Left to HeroUI's
+   * dark default it lands almost on the modal/overlay ground, so inputs are invisible until
+   * focused. Pin it to --default (a visible step above the ground).
+   */
+  --field-background: var(--default);
 
   /* Invisible like light's, but inset — HeroUI's dark convention, keeps ring utilities interpolable. */
   --surface-shadow: 0 0 0 0 transparent inset;
