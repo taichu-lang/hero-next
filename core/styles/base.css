@@ -29,6 +29,12 @@
 
   --accent: oklch(0.6016 0.07 211.92);
   --accent-foreground: oklch(0.9454 0.1444 102.84);
+
+  /*
+   * Form fields (Input, InputGroup, InputOTP slots) read --field-background. Pin it to --default 
+   * (a visible step above the ground).
+   */
+  --field-background: var(--default);
 }
 
 /*
@@ -37,7 +43,7 @@
  * here, after @heroui/styles, so the focus ring is 1px everywhere.
  */
 @utility focus-field-ring {
-  @apply ring-1 ring-focus ring-offset-0 outline-none;
+  @apply ring-focus ring-1 ring-offset-0 outline-none;
   --tw-ring-offset-width: 0px;
 }
 
