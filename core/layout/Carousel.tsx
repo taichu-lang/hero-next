@@ -81,7 +81,7 @@ export function Carousel({
   onChange,
   overlay,
 }: CarouselProps) {
-  const t = useTranslations("Carousel");
+  const t = useTranslations("carousel");
   const total = slides.length;
   const [index, setIndex] = useState(0);
   const [progress, setProgress] = useState(0);

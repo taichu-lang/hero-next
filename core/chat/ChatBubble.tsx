@@ -1,31 +1,14 @@
 "use client";
 
 import { cn } from "@heroui/styles";
-import { ChatMessageCopyAction } from "./Action";
-import { ChatAlign, Role } from "./type";
+import { createContext, useContext } from "react";
+import { ChatTurnInfoAction, TurnBubbleCopyAction } from "./Action";
+import { ChatAlign, Message, Role } from "./type";
 
-// Overview:
-//
-// - ChatMessage is the container of messages belonging to one role, ex: user message.
-// - ChatBubbleMessage is the actual message bubble, including an optional Metadata component.
-//
-// Ex:
-// - An user message:
-//
-//   <ChatMessage role="user"><ChatMessageBubble>Hi</ChatMessageBubble></ChatMessage>
-//
-// - Multi assistant messages, including assistant output, tool calls, final output:
-//
-//   <ChatMessage role="assistant">
-//     <ChatMessageBubble><Markdown>Hello</Markdown></ChatMessageBubble>
-//     <ChatMessageBubble><Tool>grep "text" /home</Tool></ChatMessageBubble>
-//   </ChatMessage>
-//
+export type MessageBubbleVariant = "filled" | "ghost";
+export type MessageBubbleRadius = "sm" | "md" | "lg";
 
-export type ChatMessageBubbleVariant = "filled" | "ghost";
-export type ChatMessageBubbleRadius = "sm" | "md" | "lg";
-
-export interface ChatMessageBubbleProps {
+export interface MessageBubbleProps {
   /**
    * Bubble content — text, Markdown, or any ReactNode.
    */
@@ -37,12 +20,13 @@ export interface ChatMessageBubbleProps {
    * - 'ghost': no background, but keeps padding for consistent alignment
    * @default 'filled'
    */
-  variant?: ChatMessageBubbleVariant;
+  variant?: MessageBubbleVariant;
 
-  radius?: ChatMessageBubbleRadius;
+  radius?: MessageBubbleRadius;
 }
 
-export function ChatMessageBubble({ children, variant = "ghost", radius = "md" }: ChatMessageBubbleProps) {
+// MessageBubble is the container of one message (user, assistant, or tool).
+export function MessageBubble({ children, variant = "ghost", radius = "md" }: MessageBubbleProps) {
   return (
     <div
       className={cn("min-w-0 text-sm", {
@@ -58,19 +42,21 @@ export function ChatMessageBubble({ children, variant = "ghost", radius = "md" }
   );
 }
 
-export interface ChatMessageMetadataProps {
+export interface TurnBubbleMetadataProps {
   children?: React.ReactNode;
   spacing?: "sm" | "md" | "lg";
   reveal?: "hover" | "always";
   enableCopy?: boolean;
+  enableTurnInfo?: boolean;
 }
 
-export function ChatMessageMetadata({
+export function TurnBubbleMetadata({
   children,
   spacing = "md",
   reveal = "always",
   enableCopy = true,
-}: ChatMessageMetadataProps) {
+  enableTurnInfo = false,
+}: TurnBubbleMetadataProps) {
   return (
     <div
       className={cn("flex items-center", { sm: "gap-1", md: "gap-2", lg: "gap-3" }[spacing], {
@@ -79,20 +65,39 @@ export function ChatMessageMetadata({
         "focus-within:opacity-100 pointer-coarse:opacity-100": reveal === "hover",
       })}
     >
-      {enableCopy && <ChatMessageCopyAction />}
+      {enableCopy && <TurnBubbleCopyAction />}
+      {enableTurnInfo && <ChatTurnInfoAction />}
       {children}
     </div>
   );
 }
 
-export interface ChatMessageProps {
+export interface TurnBubbleProps {
   role: Role;
   children: React.ReactNode;
   align?: ChatAlign;
   spacing?: "sm" | "md" | "lg";
+  messages: Message[];
 }
 
-export function ChatMessage({ role, align, spacing = "md", children }: ChatMessageProps) {
+interface TurnBubbleContextValue {
+  role: Role;
+  messages: Message[];
+}
+
+const TurnBubbleContext = createContext<TurnBubbleContextValue | null>(null);
+
+export function useTurnBubbleContext() {
+  const ctx = useContext(TurnBubbleContext);
+  if (!ctx) {
+    throw new Error("useTurnBubbleContext must be used within a TurnBubble");
+  }
+
+  return ctx;
+}
+
+// TurnBubble is the container of messages in one turn (user or assistant).
+export function TurnBubble({ role, align, spacing = "md", children, messages }: TurnBubbleProps) {
   align = align || (role === "user" ? "end" : "stretch");
 
   return (
@@ -110,7 +115,7 @@ export function ChatMessage({ role, align, spacing = "md", children }: ChatMessa
         },
       )}
     >
-      {children}
+      <TurnBubbleContext.Provider value={{ role, messages }}>{children}</TurnBubbleContext.Provider>
     </div>
   );
 }

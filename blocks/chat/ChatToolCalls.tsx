@@ -14,9 +14,9 @@ function SkillTool({ name, arguments: args }: ToolCallContent) {
   const input = JSON.parse(args) as SkillToolInput;
   return (
     <div className="flex items-center gap-3">
-      <CircleCheckBigIcon className="text-success size-4 shrink-0" />
+      <CircleCheckBigIcon className="text-success size-3.5 shrink-0" />
       <Chip color="accent">
-        <HammerIcon className="text-warning size-4" />
+        <HammerIcon className="text-warning size-3.5" />
         <Chip.Label>{name}</Chip.Label>
       </Chip>
       <p className="text-muted text-xs">{input.name}</p>

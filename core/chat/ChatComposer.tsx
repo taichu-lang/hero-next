@@ -9,7 +9,7 @@ import {
   ChatComposerValue,
   useChatComposer,
 } from "./ChatComposerInput";
-import { useChatContext } from "./ChatContext";
+import { useActiveTurn, useActiveTurnActions } from "./ActiveTurnContext";
 
 interface ComposerStatus {
   type: "error" | "warning";
@@ -121,10 +121,11 @@ function ChatComposerLayout({
   disabled,
 }: Omit<ChatComposerProps, "input" | "onSubmit">) {
   const { isEmpty, submit } = useChatComposer();
-  // Cancel comes from ChatContext, not from the composer provider: the controller of the
+  // Cancel comes from ActiveTurnContext, not from the composer provider: the controller of the
   // in-flight request is registered there by the request sender, so this button aborts the
   // current conversation's request regardless of which composer instance started it.
-  const { status, cancelRequest } = useChatContext();
+  const status = useActiveTurn((s) => s.status);
+  const { cancelRequest } = useActiveTurnActions();
 
   return (
     <div className={cn("bg-background-secondary flex w-full flex-col shadow-inner", radius)}>

@@ -1,14 +1,14 @@
 "use client";
 
 import { Button } from "@heroui/react";
-import { useChatContext } from "hero-next/chat";
+import { useActiveTurn } from "hero-next/chat";
 import { AnimatedBorder } from "hero-next/effects";
 import { ArrowDown } from "lucide-react";
 
 function ButtonContainer({ children }: { children: React.ReactNode }) {
-  const { streamingMessage } = useChatContext();
+  const processing = useActiveTurn((s) => s.turn !== null);
 
-  if (streamingMessage) {
+  if (processing) {
     return (
       <AnimatedBorder className="mx-auto mb-2 flex w-fit rounded-full" borderWidth={1.5}>
         {children}

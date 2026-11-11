@@ -1,25 +1,17 @@
 "use client";
 
-import { Typography } from "@heroui/react";
 import { cn } from "@heroui/styles";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
-  ChatContextProvider,
-  ChatMessage,
-  ChatMessageBubble,
-  ChatReasoning,
-  ChatReasoningStream,
-  ChatMessageContextProvider,
-  ChatMessageMetadata,
-  Message,
-  useChatContext,
-  useChatMessageContext,
+  ChatViewProvider,
+  getTurnKey,
+  useActiveTurn,
+  useChatView,
+  useChatViewScrollElement,
 } from "hero-next/chat";
-import { HammerIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Streamdown } from "streamdown";
-import { ChatToolCalls } from "./ChatToolCalls";
+import { ChatTurn } from "./ChatTurn";
 
 // The pin logic reads and writes scrollTop, so it has to run before paint. The list never renders anything on
 // the server, but React still warns about useLayoutEffect there.
@@ -32,7 +24,7 @@ const BOTTOM_THRESHOLD = 8;
 // "bottom" re-engages once the user scrolls back down to the end.
 type Stick = { mode: "message"; id: string } | { mode: "bottom" };
 
-export interface ChatMessageListHandler {
+export interface ChatTurnListHandler {
   // Let scrollbar to be sticky to the given message.
   stickToMessage: (id: string) => void;
 
@@ -40,12 +32,12 @@ export interface ChatMessageListHandler {
   scrollToBottom: () => void;
 }
 
-export function ChatMessageList({
+export function ChatTurnList({
   handleRef,
   topInset,
   scrollPositionListener,
 }: {
-  handleRef?: React.Ref<ChatMessageListHandler>;
+  handleRef?: React.Ref<ChatTurnListHandler>;
 
   /**
    * Blank space to keep above the pinned message, ex: the height of a sticky header. Defaults to the distance
@@ -60,15 +52,22 @@ export function ChatMessageList({
    */
   scrollPositionListener?: (bottom: boolean) => void;
 }) {
-  const { messages, scrollElement, streamingMessage } = useChatContext();
+  // The list is virtualized by turn: one turn is everything the agent produced for one user input
+  // (the user message plus every iteration's assistant output), so its row owns the whole exchange.
+  // The rows are the finished turns of the conversation, followed by the turn in flight, if any.
+  const scrollElement = useChatViewScrollElement();
+  const turns = useChatView((s) => s.turns);
+  const activeTurn = useActiveTurn((s) => s.turn);
+  const draft = useActiveTurn((s) => s.draft);
+  const items = useMemo(() => (activeTurn ? [...turns, activeTurn] : turns), [turns, activeTurn]);
 
   const listRef = useRef<HTMLDivElement>(null);
   const spacerRef = useRef<HTMLDivElement>(null);
 
-  // What the scrollbar is tied to, and whether we are still holding it there. "message" holds a message id
-  // rather than an index: stickToMessage() is called from the same event that pushes the message into the
-  // store, so at that point `messages` here is still the previous render's array, and loading older messages
-  // later shifts every index anyway.
+  // What the scrollbar is tied to, and whether we are still holding it there. "message" holds the id of the
+  // turn's first user message (the turn id while streaming) rather than an index: stickToMessage() is called
+  // from the same event that pushes the turn into the store, so at that point `turns` here is still the previous
+  // render's array, and loading older turns later shifts every index anyway.
   //
   // It starts out following the bottom so the list opens on the newest message: the history arrives after mount
   // (hydrate runs in an effect) and the rows are only measured once they render, so the end of the list keeps
@@ -103,22 +102,11 @@ export function ChatMessageList({
     return () => ro.disconnect();
   }, [scrollElement]);
 
-  const messageCount = messages.length + (streamingMessage ? 1 : 0);
-  const getItem = useCallback(
-    (index: number): Message => (index < messages.length ? messages[index] : streamingMessage!),
-    [messages, streamingMessage],
-  );
-  const isStreaming = useCallback(
-    (index: number) => {
-      return streamingMessage !== null && index === messages.length;
-    },
-    [streamingMessage, messages],
-  );
-  const getItemKey = useCallback((index: number) => getItem(index).id, [getItem]);
+  const getItemKey = useCallback((index: number) => getTurnKey(items[index]), [items]);
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
-    count: messageCount,
+    count: items.length,
     getScrollElement: () => scrollElement,
     // A flat estimate for every row: the room the last turn needs to stay pinned is reserved by the spacer below
     // the list, not by inflating the streaming bubble. Inflating it would make the list shrink by a whole
@@ -145,7 +133,7 @@ export function ChatMessageList({
     () => virtualizer.getTotalSize(),
     // getTotalSize reads virtualizer internals that change on measure; call it every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [virtualizer, virtualItems, messages.length],
+    [virtualizer, virtualItems, items.length],
   );
 
   const stickToMessage = useCallback((id: string) => {
@@ -241,8 +229,8 @@ export function ChatMessageList({
   }, [scrollElement, reportBottom]);
 
   // Hold the scrollbar where it was asked to stay. This runs after every commit — including every streamed token
-  // and the commit that moves the finished assistant message from `streamingMessage` into `messages` — so the
-  // position survives all of them.
+  // and the commit that lands the finished turn from the active turn into the conversation — so the position survives all
+  // of them.
   useIsomorphicLayoutEffect(() => {
     const scrollEl = scrollElement;
     const listEl = listRef.current;
@@ -266,9 +254,9 @@ export function ChatMessageList({
       return;
     }
 
-    // Resolve the anchor on every run: tracking it by message id means loading older messages, which shifts
-    // every index, doesn't strand it on a different message.
-    const anchorIndex = messages.findIndex((m) => m.id === anchor.id);
+    // Resolve the anchor on every run: tracking it by message id means loading older turns, which shifts every
+    // index, doesn't strand it on a different row.
+    const anchorIndex = items.findIndex((t) => t.messages.some((m) => m.id === anchor.id));
     if (anchorIndex < 0) return;
 
     // getTotalSize() refreshes the measurements that measurementsCache reads.
@@ -302,17 +290,7 @@ export function ChatMessageList({
       scrollEl.scrollTop = wanted;
     }
     appliedRef.current = scrollEl.scrollTop;
-  }, [
-    messages,
-    streamingMessage,
-    scrollElement,
-    virtualizer,
-    totalSize,
-    viewportHeight,
-    spacer,
-    topInset,
-    stickTick,
-  ]);
+  }, [items, draft, scrollElement, virtualizer, totalSize, viewportHeight, spacer, topInset, stickTick]);
 
   // Declared after the pin effect so it reads the position the pin just settled on. No dependency array: the
   // answer depends on three measurements the render output doesn't carry, and the ref above keeps the listener
@@ -331,8 +309,8 @@ export function ChatMessageList({
         }}
       >
         {virtualItems.map((vi) => {
-          const message = getItem(vi.index);
-          const streaming = isStreaming(vi.index);
+          const turn = items[vi.index];
+          const streaming = turn === activeTurn;
           return (
             <div
               key={vi.key}
@@ -346,9 +324,7 @@ export function ChatMessageList({
                 transform: `translateY(${vi.start}px)`,
               }}
             >
-              <ChatMessageContextProvider message={message}>
-                {message.role === "user" ? <UserMessage /> : <AssistantMessage streaming={streaming} />}
-              </ChatMessageContextProvider>
+              <ChatTurn turn={turn} draft={streaming ? draft : null} />
             </div>
           );
         })}
@@ -371,126 +347,9 @@ export function ChatScrollArea({ children, className }: { children: React.ReactN
       className={cn("flex h-full flex-col overflow-y-auto", className)}
       style={{ overflowAnchor: "none" }}
     >
-      <ChatContextProvider key={pathname} scroll={container}>
+      <ChatViewProvider key={pathname} scroll={container}>
         {children}
-      </ChatContextProvider>
+      </ChatViewProvider>
     </div>
-  );
-}
-
-function UserMessage() {
-  const {
-    message: { id, contents },
-  } = useChatMessageContext();
-  return (
-    <ChatMessage role="user">
-      <ChatMessageBubble variant="filled" radius="lg">
-        {contents.map((c, idx) => {
-          if (c.type === "text") {
-            return <Markdown key={`${id}-${idx}`}>{c.text}</Markdown>;
-          }
-
-          return null;
-        })}
-      </ChatMessageBubble>
-      <ChatMessageMetadata reveal="hover" />
-    </ChatMessage>
-  );
-}
-
-function AssistantMessage({ streaming = false }: { streaming?: boolean }) {
-  const {
-    message: { id, contents },
-  } = useChatMessageContext();
-  const showMeta = !streaming && contents.some((c) => c.type === "text");
-
-  return (
-    <ChatMessage role="assistant">
-      {contents.map((c, idx) => {
-        switch (c.type) {
-          case "text":
-            return (
-              <ChatMessageBubble key={`${id}-${idx}`}>
-                <Markdown isAnimating={streaming}>{c.text}</Markdown>
-              </ChatMessageBubble>
-            );
-
-          case "reasoning":
-            return streaming ? (
-              <ChatReasoningStream key={c.id}>
-                <Markdown isAnimating>{c.summary}</Markdown>
-              </ChatReasoningStream>
-            ) : (
-              <ChatReasoning key={c.id}>
-                <Markdown>{c.summary}</Markdown>
-              </ChatReasoning>
-            );
-
-          case "tool_call":
-            return <ChatToolCalls key={c.id} {...c} />;
-
-          default:
-            return null;
-        }
-      })}
-      {showMeta && <ChatMessageMetadata />}
-    </ChatMessage>
-  );
-}
-
-function Markdown({ children, isAnimating }: { children: string; isAnimating?: boolean }) {
-  return (
-    <Streamdown
-      controls={false}
-      linkSafety={{ enabled: false }}
-      isAnimating={isAnimating}
-      // Heading overrides replace streamdown's own heading components, so heading rhythm is set here
-      // and not inherited: room above (section break), tight below (title belongs to its content).
-      // Code blocks opt out of streamdown's default line numbers — the counter classes only render
-      // once its dist is scanned (see hero-next core/styles/base.css @source), and chat code reads
-      // cleaner without them, like HeroUI prose code.
-      lineNumbers={false}
-      allowedTags={{
-        // id, name are default tags.
-        skill: ["source"],
-      }}
-      components={{
-        h1: ({ children, ref, className }) => (
-          <Typography type="h1" ref={ref} className={cn(className, "mt-8 mb-3 text-2xl")} data-markdown="h1">
-            {children}
-          </Typography>
-        ),
-        h2: ({ children, ref, className }) => (
-          <Typography type="h2" ref={ref} className={cn(className, "mt-6 mb-2 text-xl")} data-markdown="h2">
-            {children}
-          </Typography>
-        ),
-        h3: ({ children, ref, className }) => (
-          <Typography type="h3" ref={ref} className={cn(className, "mt-6 mb-2 text-lg")} data-markdown="h3">
-            {children}
-          </Typography>
-        ),
-        // _temp5: `key` is not a prop.
-        p: ({ children, ref, className }) => (
-          <Typography type="body-sm" ref={ref} className={className} data-markdown="p">
-            {children}
-          </Typography>
-        ),
-        skill: ({ name, source }) => {
-          return (
-            <a
-              href={source as string}
-              className="text-warning hover:outline-warning mx-1 inline-flex items-center gap-0.5 rounded-full px-1.5 -outline-offset-1 hover:outline"
-              target="_blank"
-            >
-              <HammerIcon className="size-3.5" />
-              {name as string}
-            </a>
-          );
-        },
-      }}
-    >
-      {children}
-    </Streamdown>
   );
 }

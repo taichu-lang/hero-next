@@ -1,5 +1,5 @@
 {
-  "Carousel": {
+  "carousel": {
     "label": "Carousel",
     "previous": "Previous slide",
     "next": "Next slide",
@@ -9,7 +9,20 @@
     "mute": "Mute",
     "goToSlide": "Go to slide {index} of {total}"
   },
-  "ModelSelector": {
-    "placeholder": "Select a model"
+  "chat": {
+    "action": {
+      "turnInfoLabel": "Turn info",
+      "dialogTitle": "Execution info",
+      "status": "Status",
+      "iterations": "Iterations",
+      "tokensUsed": "Token usage",
+      "turn": "Turn",
+      "start": "Start",
+      "end": "End"
+    },
+    "reasoning": {
+      "thinking": "Thinking...",
+      "thought": "Thought"
+    }
   }
 }

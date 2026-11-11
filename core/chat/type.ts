@@ -43,15 +43,10 @@ export interface ReasoningContent {
 export type MessageContent =
   TextContent | UsageContent | ToolCallContent | ToolResultContent | ReasoningContent;
 
-export interface BaseMessage {
+export interface Message {
   id: string;
   role: Role;
   contents: MessageContent[];
-}
-
-export interface Message extends BaseMessage {
-  interrupted?: boolean;
-  hasError?: boolean;
 }
 
 // Key fields:
@@ -64,11 +59,63 @@ export type Skill = {
   installation?: string;
 };
 
-export function CollectMessageContents(message: BaseMessage): string {
+export function CollectMessageContents(message: Message): string {
   return message.contents
     .filter((content) => content.type === "text")
     .map((content) => content.text)
     .join("");
+}
+
+/**
+ * The text of the messages, in order, ex: what the copy action puts on the clipboard.
+ */
+export function CollectMessagesText(messages: Message[]): string {
+  return messages.map(CollectMessageContents).filter(Boolean).join("\n\n");
+}
+
+export type TurnStatus = "running" | "done" | "failed" | "interrupted";
+
+// One turn is everything the agent produced for one user input: the user message(s) plus every
+// assistant message of all iterations (reasoning, tool calls, text). The message list rendering
+// is turn-based; messages inside a turn keep their own bubbles.
+export interface Turn {
+  conversation_id: string;
+  turn_seq: number;
+  status: TurnStatus;
+  tokens_used: number;
+  iterations: number;
+  created_at: number;
+  updated_at: number;
+  messages: Message[];
+}
+
+// {@ Arguments of QuestionTool
+interface QuestionOption {
+  label: string;
+  description: string;
+}
+
+interface Question {
+  id: string;
+  header: string;
+  question: string;
+  options: QuestionOption[];
+}
+
+export interface QuestionToolArgs {
+  questions: Question[];
+}
+// @}
+
+// A tool call the agent paused on, waiting for the user's answer (human-in-the-loop).
+export interface HumanConfirmation {
+  id: string;
+  name: string;
+  arguments: QuestionToolArgs;
+}
+
+export function getTurnKey(turn: Turn): string {
+  return `${turn.conversation_id}-${turn.turn_seq}`;
 }
 
 // A tool call card renders a call and its result together, but the protocol delivers them as separate
@@ -79,7 +126,7 @@ export function CollectMessageContents(message: BaseMessage): string {
  * Attach every ToolResultContent to the ToolCallContent with the matching id, and drop the merged tool-result
  * contents — along with any message left empty — from the list. A result without a matching call is kept as-is.
  */
-export function MergeToolCallResults<M extends BaseMessage>(messages: M[]): M[] {
+export function MergeToolCallResults<M extends Message>(messages: M[]): M[] {
   const calls = new Set<string>();
   const results = new Map<string, string>();
   for (const message of messages) {
@@ -117,7 +164,7 @@ export function MergeToolCallResults<M extends BaseMessage>(messages: M[]): M[] 
  * The streaming variant of MergeToolCallResults: attach newly arrived results to the matching calls already in
  * the list. Returns null when no call matched, so the caller can skip the state update.
  */
-export function ApplyToolCallResults<M extends BaseMessage>(
+export function ApplyToolCallResults<M extends Message>(
   messages: M[],
   results: ToolResultContent[],
 ): M[] | null {

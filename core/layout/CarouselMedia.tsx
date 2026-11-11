@@ -70,7 +70,7 @@ export function CarouselMedia({
   onChange,
   indicatorLabel,
 }: CarouselMediaProps) {
-  const t = useTranslations("Carousel");
+  const t = useTranslations("carousel");
   const [index, setIndex] = useState(0);
   const [muted, setMuted] = useState(true);
   const videoRefs = useRef<Array<HTMLVideoElement | null>>([]);
