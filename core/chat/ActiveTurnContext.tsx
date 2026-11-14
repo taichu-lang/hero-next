@@ -92,9 +92,10 @@ export interface ActiveTurnActions {
 
   /**
    * turn.end: the turn is processed completely, so it settles into the conversation — unless it is
-   * waiting for human approval.
+   * waiting for human approval. `latest` is the backend's up-to-date turn record (seq, tokens_used,
+   * iterations...); it is merged into the turn, except messages and status.
    */
-  endTurn: () => void;
+  endTurn: (latest?: Partial<Turn>) => void;
 
   /**
    * The request broke (error event or network failure). The partial turn settles as "failed" so
@@ -188,7 +189,15 @@ export function createActiveTurnStore(onSettle: (turn: Turn) => void): ActiveTur
         set({ turn: newTurn(seq, messages), draft: null, status: "streaming" });
       },
 
-      endTurn: () => {
+      endTurn: (latest) => {
+        // The messages were assembled from the stream, so keep them; take the rest (seq, token usage,
+        // iterations, timestamps...) from the backend's authoritative record.
+        if (latest) {
+          const meta = { ...latest };
+          delete meta.messages;
+          delete meta.status;
+          set(({ turn }) => (turn ? { turn: { ...turn, ...meta } } : {}));
+        }
         if (get().confirmation.length > 0) {
           return;
         }

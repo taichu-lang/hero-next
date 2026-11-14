@@ -60,6 +60,7 @@ export function ChatTurnInfoAction() {
       value: new Date(turn.created_at * 1000).toLocaleString(),
     });
   }
+
   if (turn.updated_at) {
     rows.push({
       key: "end",

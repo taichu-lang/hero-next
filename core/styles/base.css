@@ -141,7 +141,7 @@
   }
 
   .dropdown__popover {
-    @apply rounded-lg;
+    @apply rounded-xl;
   }
 
   .dropdown__popover [data-slot="dropdown-menu"] {

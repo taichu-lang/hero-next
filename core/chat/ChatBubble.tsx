@@ -2,7 +2,7 @@
 
 import { cn } from "@heroui/styles";
 import { createContext, useContext } from "react";
-import { ChatTurnInfoAction, TurnBubbleCopyAction } from "./Action";
+import { ChatTurnInfoAction, TurnBubbleCopyAction } from "./Metadata";
 import { ChatAlign, Message, Role } from "./type";
 
 export type MessageBubbleVariant = "filled" | "ghost";
