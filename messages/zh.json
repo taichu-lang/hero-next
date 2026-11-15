@@ -24,5 +24,9 @@
       "thinking": "思考中...",
       "thought": "已思考"
     }
+  },
+  "theme": {
+    "light": "浅色",
+    "dark": "深色"
   }
 }

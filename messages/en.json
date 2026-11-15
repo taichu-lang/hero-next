@@ -24,5 +24,9 @@
       "thinking": "Thinking...",
       "thought": "Thought"
     }
+  },
+  "theme": {
+    "light": "Light Mode",
+    "dark": "Dark Mode"
   }
 }
