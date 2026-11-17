@@ -1,6 +1,6 @@
 "use client";
 
-import { Dropdown } from "@heroui/react";
+import { cn, Dropdown, DropdownItemProps } from "@heroui/react";
 import React, { useCallback, useRef, useState } from "react";
 
 export function HoverDropdown({
@@ -49,5 +49,21 @@ export function HoverDropdown({
         </Dropdown.Popover>
       </Dropdown>
     </div>
+  );
+}
+
+/**
+ * DropdownItemEnd has an end indicator.
+ */
+export function DropdownItemEnd({
+  className,
+  children,
+  ...props
+}: Omit<DropdownItemProps, "children"> & { children: React.ReactNode }) {
+  return (
+    <Dropdown.Item {...props} className={cn("ps-2 pe-7", className)}>
+      {children}
+      <Dropdown.ItemIndicator className="inset-s-auto inset-e-2" />
+    </Dropdown.Item>
   );
 }

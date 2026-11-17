@@ -1,13 +1,20 @@
 "use client";
 
-import { Button, cn, Dropdown, Label, Selection } from "@heroui/react";
+import { Button, cn, Dropdown, DropdownPopoverProps, Label, Selection } from "@heroui/react";
 import { LanguagesIcon } from "lucide-react";
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
-import { usePathname } from "../i18n/navigation";
-import { Locales, LocalSymbols } from "../i18n/routing";
+import { usePathname } from "../../i18n/navigation";
+import { Locales, LocalSymbols } from "../../i18n/routing";
+import { DropdownItemEnd } from "../layout";
 
-export function LangSwitchDropdown({ className }: { className?: string }) {
+export function LangSwitchDropdown({
+  className,
+  placement = "bottom start",
+}: {
+  className?: string;
+  placement?: DropdownPopoverProps["placement"];
+}) {
   const locale = useLocale();
   const router = useRouter();
   const path = usePathname();
@@ -31,13 +38,12 @@ export function LangSwitchDropdown({ className }: { className?: string }) {
         <LanguagesIcon className="size-3.5" />
         {LocalSymbols[locale].flag}
       </Button>
-      <Dropdown.Popover placement={"bottom start"} className={cn("min-w-30", className)}>
+      <Dropdown.Popover placement={placement} className={cn("min-w-30", className)}>
         <Dropdown.Menu selectedKeys={[locale]} selectionMode="single" onSelectionChange={switchLocale}>
           {Locales.map((l) => (
-            <Dropdown.Item key={l} id={l} textValue={LocalSymbols[l].name}>
-              <Dropdown.ItemIndicator />
+            <DropdownItemEnd key={l} id={l} textValue={LocalSymbols[l].name}>
               <Label>{LocalSymbols[l].name}</Label>
-            </Dropdown.Item>
+            </DropdownItemEnd>
           ))}
         </Dropdown.Menu>
       </Dropdown.Popover>

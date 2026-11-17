@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "private": true,
   "exports": {
-    "./*": "./core/*.tsx",
+    "./ui/*": "./core/ui/*.tsx",
     "./chat": "./core/chat/index.ts",
     "./effects": "./core/effects/index.ts",
     "./layout": "./core/layout/index.ts",
